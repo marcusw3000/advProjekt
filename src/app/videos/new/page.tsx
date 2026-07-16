@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { upload } from "@vercel/blob/client";
 
 type Mode = "upload" | "url";
 
@@ -28,11 +29,23 @@ export default function NewVideoPage() {
       }
 
       setLoading(true);
-      const form = new FormData();
-      form.append("file", file);
-      if (title.trim()) form.append("title", title.trim());
 
-      res = await fetch("/api/videos", { method: "POST", body: form });
+      try {
+        const blob = await upload(`videos/${Date.now()}-${file.name}`, file, {
+          access: "public",
+          handleUploadUrl: "/api/videos/upload",
+        });
+
+        res = await fetch("/api/videos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ blobUrl: blob.url, title: title.trim() || undefined }),
+        });
+      } catch {
+        setLoading(false);
+        setError("Falha ao enviar vídeo");
+        return;
+      }
     } else {
       if (!sourceUrl.trim()) {
         setError("Informe um link de vídeo");

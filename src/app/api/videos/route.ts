@@ -54,6 +54,30 @@ export async function POST(req: Request) {
 
   if (contentType.includes("application/json")) {
     const body = await req.json();
+
+    const blobUrl = typeof body.blobUrl === "string" ? body.blobUrl.trim() : "";
+    if (blobUrl) {
+      let parsedBlobUrl: URL;
+      try {
+        parsedBlobUrl = new URL(blobUrl);
+      } catch {
+        return NextResponse.json({ error: "Invalid blobUrl" }, { status: 400 });
+      }
+      if (parsedBlobUrl.hostname !== "blob.vercel-storage.com" && !parsedBlobUrl.hostname.endsWith(".public.blob.vercel-storage.com")) {
+        return NextResponse.json({ error: "Invalid blobUrl" }, { status: 400 });
+      }
+
+      const title = typeof body.title === "string" && body.title.trim() ? body.title.trim() : "Vídeo";
+
+      const video = await createVideoAndStartJob(session.user.id, {
+        title,
+        sourceType: "UPLOAD",
+        storageKey: blobUrl,
+      });
+
+      return NextResponse.json(video, { status: 201 });
+    }
+
     const sourceUrl = typeof body.sourceUrl === "string" ? body.sourceUrl.trim() : "";
     const title = typeof body.title === "string" && body.title.trim() ? body.title.trim() : sourceUrl;
 
