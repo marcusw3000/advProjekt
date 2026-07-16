@@ -1,0 +1,82 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+
+  videos Video[]
+}
+
+enum VideoSourceType {
+  UPLOAD
+  URL
+}
+
+enum JobStatus {
+  PENDING
+  DOWNLOADING
+  PROCESSING
+  COMPLETE
+  FAILED
+}
+
+model Video {
+  id              String          @id @default(cuid())
+  userId          String
+  title           String
+  sourceType      VideoSourceType
+  sourceUrl       String?
+  storageKey      String?
+  durationSeconds Int?
+  status          JobStatus       @default(PENDING)
+  createdAt       DateTime        @default(now())
+
+  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job      TranscriptionJob?
+  segments TranscriptSegment[]
+
+  @@index([userId])
+}
+
+model TranscriptionJob {
+  id           String    @id @default(cuid())
+  videoId      String    @unique
+  status       JobStatus @default(PENDING)
+  asrProvider  String    @default("assemblyai")
+  asrJobId     String?
+  errorMessage String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  completedAt  DateTime?
+
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+}
+
+model TranscriptSegment {
+  id                   String   @id @default(cuid())
+  videoId              String
+  speakerLabel         String
+  originalSpeakerLabel String
+  startMs              Int
+  endMs                Int
+  text                 String
+  order                Int
+  createdAt            DateTime @default(now())
+
+  video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@index([videoId, order])
+}
