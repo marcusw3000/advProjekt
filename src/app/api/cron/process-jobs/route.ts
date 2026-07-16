@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { processTranscriptionJob } from "@/lib/jobs/processJob";
+import { finalizeJobFromAsr } from "@/lib/jobs/finalizeJob";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -12,6 +13,12 @@ export async function GET(req: Request) {
   if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const processingJobs = await db.transcriptionJob.findMany({
+    where: { status: "PROCESSING", asrJobId: { not: null } },
+  });
+
+  await Promise.all(processingJobs.map((job) => finalizeJobFromAsr(job.id)));
 
   const stuckJobs = await db.transcriptionJob.findMany({
     where: {
@@ -36,5 +43,9 @@ export async function GET(req: Request) {
 
   await Promise.all(pendingJobs.map((job) => processTranscriptionJob(job.id)));
 
-  return NextResponse.json({ processed: pendingJobs.length, timedOut: stuckJobs.length });
+  return NextResponse.json({
+    reconciled: processingJobs.length,
+    processed: pendingJobs.length,
+    timedOut: stuckJobs.length,
+  });
 }
