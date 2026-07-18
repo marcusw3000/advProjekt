@@ -7,6 +7,7 @@ import { getMinutesBalance } from "@/lib/minutes";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { JobStatusBadge } from "@/components/JobStatusBadge";
+import { VideoTitleEditor } from "@/components/VideoTitleEditor";
 
 function formatDuration(seconds: number | null) {
   if (!seconds) return "--:--";
@@ -90,17 +91,17 @@ export default async function VideosPage() {
           </Card>
         ) : (
           <Card className="mt-4 gap-0 overflow-hidden p-0">
-            <div className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-4 border-b border-border bg-secondary/60 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <div className="grid grid-cols-[minmax(0,1fr)_112px_88px_110px_84px] items-center gap-4 border-b border-border bg-secondary/60 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <span>Nome do Arquivo</span>
               <span>Data</span>
               <span>Duração</span>
               <span>Status</span>
-              <span>Ações</span>
+              <span className="text-right">Ações</span>
             </div>
             {videos.map((video) => (
               <div
                 key={video.id}
-                className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-4 border-b border-border px-4 py-3 last:border-0 hover:bg-secondary/40"
+                className="grid grid-cols-[minmax(0,1fr)_112px_88px_110px_84px] items-center gap-4 border-b border-border px-4 py-3 last:border-0 hover:bg-secondary/40"
               >
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary">
@@ -110,7 +111,12 @@ export default async function VideosPage() {
                       <Upload className="size-4 text-muted-foreground" />
                     )}
                   </div>
-                  <p className="truncate text-sm font-medium text-foreground">{video.title}</p>
+                  <VideoTitleEditor
+                    videoId={video.id}
+                    initialTitle={video.title}
+                    className="text-sm font-medium text-foreground"
+                    inputClassName="text-sm"
+                  />
                 </div>
                 <span className="text-sm text-muted-foreground">
                   {new Date(video.createdAt).toLocaleDateString("pt-BR", {
@@ -122,8 +128,10 @@ export default async function VideosPage() {
                 <span className="font-mono text-sm text-muted-foreground">
                   {formatDuration(video.durationSeconds)}
                 </span>
-                <JobStatusBadge status={video.status} />
-                <div className="flex items-center gap-1">
+                <div>
+                  <JobStatusBadge status={video.status} />
+                </div>
+                <div className="flex items-center justify-end gap-1">
                   <Link
                     href={`/videos/${video.id}`}
                     className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"

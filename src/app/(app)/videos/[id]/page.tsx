@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { VideoDetailClient } from "@/components/VideoDetailClient";
+import { VideoTitleEditor } from "@/components/VideoTitleEditor";
 
 export default async function VideoDetailPage({
   params,
@@ -30,7 +31,12 @@ export default async function VideoDetailPage({
         <ArrowLeft className="size-4" />
         Voltar
       </Link>
-      <h1 className="font-heading text-2xl text-foreground">{video.title}</h1>
+      <VideoTitleEditor
+        videoId={video.id}
+        initialTitle={video.title}
+        className="font-heading text-2xl text-foreground"
+        inputClassName="font-heading text-2xl"
+      />
       <VideoDetailClient
         videoId={video.id}
         initialStatus={video.status}

@@ -10,6 +10,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogPopup,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 type Mode = "upload" | "url";
 
@@ -36,6 +45,7 @@ export default function NewVideoPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [minutesBalance, setMinutesBalance] = useState<number | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     fetch("/api/minutes")
@@ -57,8 +67,24 @@ export default function NewVideoPage() {
     }
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleFormSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setError(null);
+
+    if (mode === "upload" && !file) {
+      setError("Selecione um arquivo de vídeo");
+      return;
+    }
+    if (mode === "url" && !sourceUrl.trim()) {
+      setError("Informe um link de vídeo");
+      return;
+    }
+
+    setConfirmOpen(true);
+  }
+
+  async function handleConfirmedSubmit() {
+    setConfirmOpen(false);
     setError(null);
 
     let res: Response;
@@ -155,7 +181,7 @@ export default function NewVideoPage() {
             </TabsList>
           </Tabs>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <form onSubmit={handleFormSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="title">Título (opcional)</Label>
               <Input
@@ -219,6 +245,58 @@ export default function NewVideoPage() {
           </form>
         </CardContent>
       </Card>
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogPopup>
+          <DialogHeader>
+            <DialogTitle>Confirmar envio</DialogTitle>
+            <DialogDescription>
+              {mode === "upload" ? file?.name : sourceUrl}
+            </DialogDescription>
+          </DialogHeader>
+
+          {estimatedMinutes ? (
+            <p className="text-sm text-foreground">
+              Este processo usará aproximadamente{" "}
+              <span className="font-medium">{estimatedMinutes} min</span> do
+              seu saldo de{" "}
+              <span className="font-medium">{minutesBalance ?? 0} min</span>.
+            </p>
+          ) : (
+            <p className="text-sm text-foreground">
+              O custo será calculado pela duração real do vídeo (1 minuto = 1
+              min de saldo).
+            </p>
+          )}
+
+          {insufficientBalance && (
+            <div className="mt-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+              Você não tem minutos suficientes.{" "}
+              <Link href="/precos" className="font-medium underline underline-offset-2">
+                Comprar minutos
+              </Link>
+            </div>
+          )}
+
+          <DialogFooter>
+            <DialogClose
+              render={
+                <Button type="button" variant="ghost">
+                  Cancelar
+                </Button>
+              }
+            />
+            <Button
+              type="button"
+              disabled={insufficientBalance}
+              onClick={handleConfirmedSubmit}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              Confirmar envio
+            </Button>
+          </DialogFooter>
+        </DialogPopup>
+      </Dialog>
     </div>
   );
 }
