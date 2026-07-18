@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Loader2, RotateCcw } from "lucide-react";
+import { Download, FileText, Loader2, RotateCcw } from "lucide-react";
 import { JobStatusBadge } from "@/components/JobStatusBadge";
 import { TranscriptViewer, type TranscriptSegmentData } from "@/components/TranscriptViewer";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 const ACTIVE_STATUSES = new Set(["PENDING", "DOWNLOADING", "PROCESSING"]);
 const POLL_INTERVAL_MS = 3000;
@@ -15,11 +16,15 @@ export function VideoDetailClient({
   initialStatus,
   initialSegments,
   videoSrc,
+  initialSummary,
+  initialSummaryStatus,
 }: {
   videoId: string;
   initialStatus: string;
   initialSegments: TranscriptSegmentData[];
   videoSrc?: string | null;
+  initialSummary?: string | null;
+  initialSummaryStatus?: string | null;
 }) {
   const [status, setStatus] = useState(initialStatus);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -27,8 +32,27 @@ export function VideoDetailClient({
   const [retrying, setRetrying] = useState(false);
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
+  const [summary, setSummary] = useState(initialSummary ?? null);
+  const [summaryStatus, setSummaryStatus] = useState(initialSummaryStatus ?? null);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const router = useRouter();
+
+  async function handleGenerateSummary() {
+    setSummaryStatus("PROCESSING");
+    setSummaryError(null);
+    const res = await fetch(`/api/videos/${videoId}/summary`, { method: "POST" });
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      setSummaryStatus("FAILED");
+      setSummaryError(data.error ?? "Falha ao gerar resumo");
+      return;
+    }
+
+    setSummary(data.summary);
+    setSummaryStatus("COMPLETE");
+  }
 
   function seekTo(startMs: number) {
     const el = videoRef.current;
@@ -98,7 +122,7 @@ export function VideoDetailClient({
       )}
       {status === "COMPLETE" && (
         <div className="ml-auto flex flex-wrap gap-2">
-          {(["txt", "srt", "vtt"] as const).map((format) => (
+          {(["txt", "docx", "pdf"] as const).map((format) => (
             <Button
               key={format}
               variant="outline"
@@ -150,6 +174,36 @@ export function VideoDetailClient({
       </div>
 
       <div className="flex flex-col gap-3">
+        {status === "COMPLETE" && (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleGenerateSummary}
+                disabled={summaryStatus === "PROCESSING"}
+              >
+                {summaryStatus === "PROCESSING" ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <FileText className="size-3.5" />
+                )}
+                {summaryStatus === "PROCESSING"
+                  ? "Gerando resumo..."
+                  : summary
+                    ? "Gerar resumo novamente"
+                    : "Gerar Resumo da Audiência"}
+              </Button>
+              {summaryError && <span className="text-sm text-destructive">{summaryError}</span>}
+            </div>
+            {summary && (
+              <Card className="p-4 ring-border/60">
+                <p className="whitespace-pre-wrap text-sm text-foreground">{summary}</p>
+              </Card>
+            )}
+          </div>
+        )}
         <TranscriptViewer
           videoId={videoId}
           segments={segments}

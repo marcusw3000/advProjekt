@@ -36,6 +36,8 @@ export default async function VideoDetailPage({
         initialStatus={video.status}
         initialSegments={video.segments}
         videoSrc={video.sourceType === "UPLOAD" ? video.storageKey : null}
+        initialSummary={video.summary}
+        initialSummaryStatus={video.summaryStatus}
       />
     </div>
   );

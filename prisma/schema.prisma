@@ -55,15 +55,19 @@ enum JobStatus {
 }
 
 model Video {
-  id              String          @id @default(cuid())
-  userId          String
-  title           String
-  sourceType      VideoSourceType
-  sourceUrl       String?
-  storageKey      String?
-  durationSeconds Int?
-  status          JobStatus       @default(PENDING)
-  createdAt       DateTime        @default(now())
+  id                 String          @id @default(cuid())
+  userId             String
+  title              String
+  sourceType         VideoSourceType
+  sourceUrl          String?
+  storageKey         String?
+  durationSeconds    Int?
+  status             JobStatus       @default(PENDING)
+  createdAt          DateTime        @default(now())
+  summary            String?         @db.Text
+  summaryStatus      JobStatus?
+  summaryError       String?
+  summaryGeneratedAt DateTime?
 
   user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   job      TranscriptionJob?

@@ -1,13 +1,31 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Pencil } from "lucide-react";
+import { Pencil, Search, X } from "lucide-react";
 import { formatMs } from "@/lib/time";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function highlightMatch(text: string, term: string) {
+  if (!term.trim()) return text;
+  const parts = text.split(new RegExp(`(${escapeRegExp(term)})`, "gi"));
+  return parts.map((part, i) =>
+    part.toLowerCase() === term.toLowerCase() ? (
+      <mark key={i} className="rounded-sm bg-tertiary/60 text-inherit">
+        {part}
+      </mark>
+    ) : (
+      part
+    )
+  );
+}
 
 export type TranscriptSegmentData = {
   id: string;
@@ -46,6 +64,7 @@ export function TranscriptViewer({
   const [editingSegmentSpeakerId, setEditingSegmentSpeakerId] = useState<string | null>(null);
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
   const [renameMode, setRenameMode] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const speakers = useMemo(() => {
     const seen = new Map<string, string>();
@@ -74,7 +93,12 @@ export function TranscriptViewer({
     setSelectedSpeakers(next);
   }
 
-  const filteredSegments = segments.filter((s) => activeSelection.has(s.originalSpeakerLabel));
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const filteredSegments = segments.filter(
+    (s) =>
+      activeSelection.has(s.originalSpeakerLabel) &&
+      (!normalizedSearch || s.text.toLowerCase().includes(normalizedSearch))
+  );
 
   async function renameSpeaker(originalSpeakerLabel: string, newLabel: string) {
     if (!newLabel.trim()) {
@@ -115,6 +139,31 @@ export function TranscriptViewer({
 
   return (
     <div className="flex flex-col gap-3">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="Buscar na transcrição..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-8 pr-8"
+        />
+        {searchTerm && (
+          <button
+            type="button"
+            onClick={() => setSearchTerm("")}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="size-4" />
+          </button>
+        )}
+      </div>
+      {normalizedSearch && (
+        <p className="text-xs text-muted-foreground">
+          {filteredSegments.length} {filteredSegments.length === 1 ? "resultado" : "resultados"} pra &quot;{searchTerm}&quot;
+        </p>
+      )}
+
       <div className="flex flex-wrap items-center gap-1.5">
         <button
           type="button"
@@ -182,6 +231,10 @@ export function TranscriptViewer({
         <p className="text-xs text-muted-foreground">Clique em um locutor acima pra renomear.</p>
       )}
 
+      {filteredSegments.length === 0 && (
+        <p className="text-sm text-muted-foreground">Nenhuma fala encontrada.</p>
+      )}
+
       {filteredSegments.map((segment) => {
         const color = speakerColorMap.get(segment.originalSpeakerLabel)!;
         return (
@@ -246,7 +299,7 @@ export function TranscriptViewer({
                 }}
                 className="mt-1.5 cursor-text"
               >
-                {segment.text}
+                {highlightMatch(segment.text, normalizedSearch)}
               </p>
             )}
           </div>
