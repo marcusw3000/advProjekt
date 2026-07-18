@@ -42,7 +42,8 @@ export function TranscriptViewer({
   activeSegmentId?: string | null;
   onSeek?: (startMs: number) => void;
 }) {
-  const [editingSpeaker, setEditingSpeaker] = useState<string | null>(null);
+  const [editingFilterSpeaker, setEditingFilterSpeaker] = useState<string | null>(null);
+  const [editingSegmentSpeakerId, setEditingSegmentSpeakerId] = useState<string | null>(null);
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
   const [renameMode, setRenameMode] = useState(false);
 
@@ -77,7 +78,8 @@ export function TranscriptViewer({
 
   async function renameSpeaker(originalSpeakerLabel: string, newLabel: string) {
     if (!newLabel.trim()) {
-      setEditingSpeaker(null);
+      setEditingFilterSpeaker(null);
+      setEditingSegmentSpeakerId(null);
       return;
     }
 
@@ -86,7 +88,8 @@ export function TranscriptViewer({
         s.originalSpeakerLabel === originalSpeakerLabel ? { ...s, speakerLabel: newLabel.trim() } : s
       )
     );
-    setEditingSpeaker(null);
+    setEditingFilterSpeaker(null);
+    setEditingSegmentSpeakerId(null);
 
     await fetch(`/api/videos/${videoId}/speakers`, {
       method: "PATCH",
@@ -124,7 +127,7 @@ export function TranscriptViewer({
           const color = speakerColorMap.get(sp.originalSpeakerLabel)!;
           const active = activeSelection.has(sp.originalSpeakerLabel);
 
-          if (editingSpeaker === sp.originalSpeakerLabel) {
+          if (editingFilterSpeaker === sp.originalSpeakerLabel) {
             return (
               <Input
                 key={sp.originalSpeakerLabel}
@@ -133,7 +136,7 @@ export function TranscriptViewer({
                 onBlur={(e) => renameSpeaker(sp.originalSpeakerLabel, e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") e.currentTarget.blur();
-                  if (e.key === "Escape") setEditingSpeaker(null);
+                  if (e.key === "Escape") setEditingFilterSpeaker(null);
                 }}
                 className="h-6 w-24 text-xs font-semibold"
               />
@@ -145,7 +148,7 @@ export function TranscriptViewer({
               key={sp.originalSpeakerLabel}
               type="button"
               onClick={() =>
-                renameMode ? setEditingSpeaker(sp.originalSpeakerLabel) : toggleSpeaker(sp.originalSpeakerLabel)
+                renameMode ? setEditingFilterSpeaker(sp.originalSpeakerLabel) : toggleSpeaker(sp.originalSpeakerLabel)
               }
             >
               <Badge
@@ -194,14 +197,14 @@ export function TranscriptViewer({
             {formatMs(segment.startMs)}–{formatMs(segment.endMs)}
           </span>
           <div className="flex-1">
-            {editingSpeaker === segment.originalSpeakerLabel ? (
+            {editingSegmentSpeakerId === segment.id ? (
               <Input
                 autoFocus
                 defaultValue={segment.speakerLabel}
                 onBlur={(e) => renameSpeaker(segment.originalSpeakerLabel, e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") e.currentTarget.blur();
-                  if (e.key === "Escape") setEditingSpeaker(null);
+                  if (e.key === "Escape") setEditingSegmentSpeakerId(null);
                 }}
                 onClick={(e) => e.stopPropagation()}
                 className="h-6 w-fit text-xs font-semibold"
@@ -211,7 +214,7 @@ export function TranscriptViewer({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setEditingSpeaker(segment.originalSpeakerLabel);
+                  setEditingSegmentSpeakerId(segment.id);
                 }}
               >
                 <Badge

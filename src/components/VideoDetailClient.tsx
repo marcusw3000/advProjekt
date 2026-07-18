@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Download, Loader2, RotateCcw } from "lucide-react";
 import { JobStatusBadge } from "@/components/JobStatusBadge";
 import { TranscriptViewer, type TranscriptSegmentData } from "@/components/TranscriptViewer";
@@ -27,6 +28,7 @@ export function VideoDetailClient({
   const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const router = useRouter();
 
   function seekTo(startMs: number) {
     const el = videoRef.current;
@@ -73,6 +75,7 @@ export function VideoDetailClient({
         if (!videoRes.ok || cancelled) return;
         const video = await videoRes.json();
         setSegments(video.segments ?? []);
+        router.refresh();
       }
     }
 
@@ -81,7 +84,7 @@ export function VideoDetailClient({
       cancelled = true;
       clearInterval(interval);
     };
-  }, [status, videoId]);
+  }, [status, videoId, router]);
 
   const statusRow = (
     <div className="flex flex-wrap items-center gap-2">
