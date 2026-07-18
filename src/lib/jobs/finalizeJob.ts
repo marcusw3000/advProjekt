@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { assemblyAiProvider } from "@/lib/asr/assemblyai";
 import { guessSpeakerNames } from "@/lib/jobs/guessSpeakerNames";
 import { guessAddressedSpeakerNames } from "@/lib/jobs/guessAddressedSpeakerNames";
-import { debitForCompletedVideo } from "@/lib/credits";
+import { debitMinutesForCompletedVideo } from "@/lib/minutes";
 
 export async function finalizeJobFromAsr(jobId: string) {
   const job = await db.transcriptionJob.findUnique({ where: { id: jobId }, include: { video: true } });
@@ -26,6 +26,9 @@ export async function finalizeJobFromAsr(jobId: string) {
     ...guessSpeakerNames(transcript.utterances),
   };
 
+  const maxEndMs = transcript.utterances.reduce((max, u) => Math.max(max, u.endMs), 0);
+  const durationSeconds = transcript.durationSeconds ?? Math.ceil(maxEndMs / 1000);
+
   await db.$transaction(async (tx) => {
     await tx.transcriptSegment.deleteMany({ where: { videoId: job.videoId } });
     await tx.transcriptSegment.createMany({
@@ -43,7 +46,10 @@ export async function finalizeJobFromAsr(jobId: string) {
       where: { id: jobId },
       data: { status: "COMPLETE", completedAt: new Date() },
     });
-    await tx.video.update({ where: { id: job.videoId }, data: { status: "COMPLETE" } });
-    await debitForCompletedVideo(tx, job.video.userId, job.videoId);
+    await tx.video.update({
+      where: { id: job.videoId },
+      data: { status: "COMPLETE", durationSeconds },
+    });
+    await debitMinutesForCompletedVideo(tx, job.video.userId, job.videoId, durationSeconds);
   });
 }

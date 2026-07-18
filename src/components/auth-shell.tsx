@@ -9,10 +9,8 @@ export function AuthShell({
   children: React.ReactNode;
 }) {
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4">
-      <div className="pointer-events-none absolute -top-32 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-primary/25 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-16 -right-16 h-72 w-72 rounded-full bg-[oklch(0.606_0.25_292.717/25%)] blur-3xl" />
-      <Card className="relative z-10 w-full max-w-sm shadow-2xl shadow-black/40 ring-border/60">
+    <div className="flex min-h-screen items-center justify-center bg-secondary/40 px-4">
+      <Card className="w-full max-w-sm shadow-sm">
         <CardContent className="flex flex-col items-center gap-6">
           <div className="flex flex-col items-center gap-1 text-center">
             <Logo className="text-xl" />

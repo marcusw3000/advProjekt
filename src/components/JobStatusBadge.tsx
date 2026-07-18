@@ -13,7 +13,7 @@ const STYLES: Record<string, string> = {
   PENDING: "bg-secondary text-secondary-foreground",
   DOWNLOADING: "bg-primary/15 text-primary",
   PROCESSING: "bg-primary/15 text-primary",
-  COMPLETE: "bg-emerald-500/15 text-emerald-400",
+  COMPLETE: "bg-emerald-100 text-emerald-700",
   FAILED: "bg-destructive/15 text-destructive",
 };
 

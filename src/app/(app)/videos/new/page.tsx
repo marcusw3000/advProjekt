@@ -4,33 +4,58 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
-import { ArrowLeft, Coins, Link2, Loader2, UploadCloud } from "lucide-react";
+import { ArrowLeft, Link2, Loader2, Timer, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CREDIT_COST_PER_VIDEO } from "@/lib/creditsConfig";
 
 type Mode = "upload" | "url";
+
+function readMediaDuration(file: File): Promise<number | null> {
+  return new Promise((resolve) => {
+    const el = document.createElement(file.type.startsWith("audio/") ? "audio" : "video");
+    el.preload = "metadata";
+    el.onloadedmetadata = () => {
+      URL.revokeObjectURL(el.src);
+      resolve(Number.isFinite(el.duration) ? el.duration : null);
+    };
+    el.onerror = () => resolve(null);
+    el.src = URL.createObjectURL(file);
+  });
+}
 
 export default function NewVideoPage() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("upload");
   const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [durationSeconds, setDurationSeconds] = useState<number | null>(null);
   const [sourceUrl, setSourceUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [credits, setCredits] = useState<number | null>(null);
+  const [minutesBalance, setMinutesBalance] = useState<number | null>(null);
 
   useEffect(() => {
-    fetch("/api/credits")
+    fetch("/api/minutes")
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setCredits(data?.credits ?? 0));
+      .then((data) => setMinutesBalance(data?.minutesBalance ?? 0));
   }, []);
 
-  const insufficientCredits = credits !== null && credits < CREDIT_COST_PER_VIDEO;
+  const estimatedMinutes = durationSeconds ? Math.max(1, Math.ceil(durationSeconds / 60)) : null;
+  const insufficientBalance =
+    minutesBalance !== null &&
+    (estimatedMinutes ? minutesBalance < estimatedMinutes : minutesBalance <= 0);
+
+  async function handleFileChange(selected: File | null) {
+    setFile(selected);
+    setDurationSeconds(null);
+    if (selected) {
+      const duration = await readMediaDuration(selected);
+      setDurationSeconds(duration);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -55,7 +80,11 @@ export default function NewVideoPage() {
         res = await fetch("/api/videos", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ blobUrl: blob.url, title: title.trim() || undefined }),
+          body: JSON.stringify({
+            blobUrl: blob.url,
+            title: title.trim() || undefined,
+            estimatedDurationSeconds: durationSeconds ?? undefined,
+          }),
         });
       } catch {
         setLoading(false);
@@ -80,7 +109,7 @@ export default function NewVideoPage() {
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      if (res.status === 402) setCredits(0);
+      if (res.status === 402) setMinutesBalance(0);
       setError(data.error ?? "Falha ao enviar vídeo");
       return;
     }
@@ -99,20 +128,22 @@ export default function NewVideoPage() {
         Voltar
       </Link>
 
-      <Card className="ring-border/60">
+      <Card>
         <CardContent className="flex flex-col gap-4">
-          <h1 className="font-heading text-xl text-foreground">Novo vídeo</h1>
+          <h1 className="font-heading text-xl text-foreground">Novo Arquivo</h1>
 
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Coins className="size-3.5 text-tertiary" />
-            Esta transcrição custa {CREDIT_COST_PER_VIDEO} créditos.
+            <Timer className="size-3.5" />
+            {estimatedMinutes
+              ? `Custo estimado: ${estimatedMinutes} min.`
+              : "O custo é calculado pela duração real do áudio/vídeo (1 minuto = 1 min de saldo)."}
           </div>
 
-          {insufficientCredits && (
+          {insufficientBalance && (
             <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
-              Você não tem créditos suficientes.{" "}
-              <Link href="/creditos" className="font-medium underline underline-offset-2">
-                Comprar créditos
+              Você não tem minutos suficientes.{" "}
+              <Link href="/precos" className="font-medium underline underline-offset-2">
+                Comprar minutos
               </Link>
             </div>
           )}
@@ -130,7 +161,7 @@ export default function NewVideoPage() {
               <Input
                 id="title"
                 type="text"
-                placeholder="Ex: Reunião de kickoff"
+                placeholder="Ex: Audiência de Conciliação"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
@@ -152,7 +183,7 @@ export default function NewVideoPage() {
                     type="file"
                     accept="video/*,audio/*"
                     required
-                    onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                    onChange={(e) => handleFileChange(e.target.files?.[0] ?? null)}
                     className="hidden"
                   />
                 </label>
@@ -179,8 +210,8 @@ export default function NewVideoPage() {
 
             <Button
               type="submit"
-              disabled={loading || insufficientCredits}
-              className="bg-gradient-brand text-primary-foreground hover:opacity-90"
+              disabled={loading || insufficientBalance}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
             >
               {loading && <Loader2 className="size-4 animate-spin" />}
               {loading ? "Enviando..." : "Enviar"}

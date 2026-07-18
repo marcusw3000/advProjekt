@@ -18,7 +18,7 @@ function highlightMatch(text: string, term: string) {
   const parts = text.split(new RegExp(`(${escapeRegExp(term)})`, "gi"));
   return parts.map((part, i) =>
     part.toLowerCase() === term.toLowerCase() ? (
-      <mark key={i} className="rounded-sm bg-tertiary/60 text-inherit">
+      <mark key={i} className="rounded-sm bg-accent text-inherit">
         {part}
       </mark>
     ) : (
@@ -53,12 +53,14 @@ export function TranscriptViewer({
   onSegmentsChange,
   activeSegmentId,
   onSeek,
+  onSaved,
 }: {
   videoId: string;
   segments: TranscriptSegmentData[];
   onSegmentsChange: (segments: TranscriptSegmentData[]) => void;
   activeSegmentId?: string | null;
   onSeek?: (startMs: number) => void;
+  onSaved?: () => void;
 }) {
   const [editingFilterSpeaker, setEditingFilterSpeaker] = useState<string | null>(null);
   const [editingSegmentSpeakerId, setEditingSegmentSpeakerId] = useState<string | null>(null);
@@ -120,6 +122,7 @@ export function TranscriptViewer({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ originalSpeakerLabel, newLabel: newLabel.trim() }),
     });
+    onSaved?.();
   }
 
   async function editText(segmentId: string, text: string) {
@@ -131,6 +134,7 @@ export function TranscriptViewer({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
     });
+    onSaved?.();
   }
 
   if (segments.length === 0) {

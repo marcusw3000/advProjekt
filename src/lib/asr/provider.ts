@@ -8,6 +8,7 @@ export type AsrUtterance = {
 export type AsrTranscriptResult = {
   status: "completed" | "error" | "processing" | "queued";
   utterances: AsrUtterance[];
+  durationSeconds?: number;
   error?: string;
 };
 

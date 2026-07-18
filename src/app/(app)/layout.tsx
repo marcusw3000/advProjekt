@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/lib/auth";
 import { AppShell } from "@/components/app-shell";
-import { getCredits } from "@/lib/credits";
+import { getMinutesBalance } from "@/lib/minutes";
 
 export default async function AppLayout({
   children,
@@ -11,7 +11,7 @@ export default async function AppLayout({
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const credits = await getCredits(session.user.id);
+  const minutesBalance = await getMinutesBalance(session.user.id);
 
   async function handleSignOut() {
     "use server";
@@ -19,7 +19,7 @@ export default async function AppLayout({
   }
 
   return (
-    <AppShell userEmail={session.user.email ?? ""} credits={credits} onSignOut={handleSignOut}>
+    <AppShell userEmail={session.user.email ?? ""} minutesBalance={minutesBalance} onSignOut={handleSignOut}>
       {children}
     </AppShell>
   );

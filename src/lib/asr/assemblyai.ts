@@ -19,6 +19,7 @@ type AssemblyAiTranscript = {
   status: "queued" | "processing" | "completed" | "error";
   error?: string;
   utterances?: AssemblyAiUtterance[];
+  audio_duration?: number;
 };
 
 export const assemblyAiProvider: AsrProvider = {
@@ -60,6 +61,7 @@ export const assemblyAiProvider: AsrProvider = {
     return {
       status: data.status,
       error: data.error,
+      durationSeconds: data.audio_duration,
       utterances: (data.utterances ?? []).map((u) => ({
         speaker: `Speaker ${u.speaker}`,
         startMs: u.start,

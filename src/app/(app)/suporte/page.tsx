@@ -15,8 +15,8 @@ export default function SuportePage() {
         </div>
         <div>
           <p className="font-medium">Email</p>
-          <a href="mailto:suporte@transcreve.ai" className="text-sm text-primary hover:underline">
-            suporte@transcreve.ai
+          <a href="mailto:suporte@lexscript.ai" className="text-sm text-primary hover:underline">
+            suporte@lexscript.ai
           </a>
         </div>
       </Card>

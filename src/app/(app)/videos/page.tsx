@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CalendarDays, Clock, FileVideo, Link2, Plus, Upload } from "lucide-react";
+import { Download, Eye, FileVideo, Link2, Plus, Timer, Upload } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getMinutesBalance } from "@/lib/minutes";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { JobStatusBadge } from "@/components/JobStatusBadge";
@@ -18,88 +19,131 @@ export default async function VideosPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const videos = await db.video.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "desc" },
-  });
+  const [videos, minutesBalance] = await Promise.all([
+    db.video.findMany({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: "desc" },
+    }),
+    getMinutesBalance(session.user.id),
+  ]);
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-8 md:px-8 md:py-10">
-      <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="font-heading text-2xl text-foreground">Meus vídeos</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Acesse e gerencie todos os seus arquivos processados.
+    <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-8 md:px-8 md:py-10">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <Card className="gap-3 bg-primary p-8 text-primary-foreground md:col-span-2">
+          <h1 className="font-heading text-2xl font-bold">Nova Transcrição Jurídica</h1>
+          <p className="max-w-md text-sm text-primary-foreground/70">
+            Processe audiências, depoimentos e reuniões com precisão de 99%. Suporte para
+            múltiplos oradores e carimbos de tempo automáticos.
           </p>
-        </div>
-        <Button
-          render={<Link href="/videos/new" />}
-          nativeButton={false}
-          className="bg-gradient-brand text-primary-foreground hover:opacity-90"
-        >
-          <Plus className="size-4" />
-          Novo vídeo
-        </Button>
-      </div>
-
-      {videos.length === 0 ? (
-        <Card className="items-center gap-3 px-6 py-16 text-center ring-border/60">
-          <FileVideo className="size-10 text-muted-foreground" />
-          <div>
-            <p className="font-medium">Nenhum vídeo enviado ainda</p>
-            <p className="text-sm text-muted-foreground">
-              Comece enviando seu primeiro vídeo pra transcrever.
-            </p>
-          </div>
           <Button
             render={<Link href="/videos/new" />}
             nativeButton={false}
-            className="mt-2 bg-gradient-brand text-primary-foreground hover:opacity-90"
+            className="mt-2 w-fit bg-white text-primary hover:bg-white/90"
           >
             <Plus className="size-4" />
-            Enviar seu primeiro vídeo
+            Novo Arquivo
           </Button>
         </Card>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {videos.map((video) => (
-            <Link key={video.id} href={`/videos/${video.id}`}>
-              <Card className="flex-col gap-4 p-4 ring-border/60 transition-colors hover:bg-accent/20 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-start gap-4 sm:items-center">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+
+        <Card className="justify-between gap-2 p-6">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <Timer className="size-3.5" />
+            Créditos Disponíveis
+          </div>
+          <p className="font-heading text-3xl font-bold text-foreground">{minutesBalance} min</p>
+          <Link href="/precos" className="text-sm font-medium text-foreground hover:underline">
+            Comprar mais minutos →
+          </Link>
+        </Card>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-heading text-lg font-semibold text-foreground">
+              Últimas Audiências
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Gerencie seus arquivos processados recentemente.
+            </p>
+          </div>
+        </div>
+
+        {videos.length === 0 ? (
+          <Card className="mt-4 items-center gap-3 px-6 py-16 text-center">
+            <FileVideo className="size-10 text-muted-foreground" />
+            <div>
+              <p className="font-medium">Nenhum vídeo enviado ainda</p>
+              <p className="text-sm text-muted-foreground">
+                Comece enviando seu primeiro vídeo pra transcrever.
+              </p>
+            </div>
+            <Button
+              render={<Link href="/videos/new" />}
+              nativeButton={false}
+              className="mt-2 bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <Plus className="size-4" />
+              Enviar seu primeiro vídeo
+            </Button>
+          </Card>
+        ) : (
+          <Card className="mt-4 gap-0 overflow-hidden p-0">
+            <div className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-4 border-b border-border bg-secondary/60 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <span>Nome do Arquivo</span>
+              <span>Data</span>
+              <span>Duração</span>
+              <span>Status</span>
+              <span>Ações</span>
+            </div>
+            {videos.map((video) => (
+              <div
+                key={video.id}
+                className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-4 border-b border-border px-4 py-3 last:border-0 hover:bg-secondary/40"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary">
                     {video.sourceType === "URL" ? (
                       <Link2 className="size-4 text-muted-foreground" />
                     ) : (
                       <Upload className="size-4 text-muted-foreground" />
                     )}
                   </div>
-                  <div className="min-w-0">
-                    <p className="truncate font-medium">{video.title}</p>
-                    <div className="mt-0.5 flex items-center gap-3 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <CalendarDays className="size-3.5" />
-                        {new Date(video.createdAt).toLocaleDateString("pt-BR", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                        })}
-                      </span>
-                      <span className="size-1 rounded-full bg-border" />
-                      <span className="flex items-center gap-1">
-                        <Clock className="size-3.5" />
-                        {formatDuration(video.durationSeconds)}
-                      </span>
-                    </div>
-                  </div>
+                  <p className="truncate text-sm font-medium text-foreground">{video.title}</p>
                 </div>
-                <div className="flex items-center justify-between gap-3 border-t border-border/40 pt-3 sm:justify-end sm:border-0 sm:pt-0">
-                  <JobStatusBadge status={video.status} />
+                <span className="text-sm text-muted-foreground">
+                  {new Date(video.createdAt).toLocaleDateString("pt-BR", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </span>
+                <span className="font-mono text-sm text-muted-foreground">
+                  {formatDuration(video.durationSeconds)}
+                </span>
+                <JobStatusBadge status={video.status} />
+                <div className="flex items-center gap-1">
+                  <Link
+                    href={`/videos/${video.id}`}
+                    className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  >
+                    <Eye className="size-4" />
+                  </Link>
+                  {video.status === "COMPLETE" && (
+                    <a
+                      href={`/api/videos/${video.id}/export?format=txt`}
+                      className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    >
+                      <Download className="size-4" />
+                    </a>
+                  )}
                 </div>
-              </Card>
-            </Link>
-          ))}
-        </div>
-      )}
+              </div>
+            ))}
+          </Card>
+        )}
+      </div>
     </div>
   );
 }

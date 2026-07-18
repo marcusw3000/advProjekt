@@ -67,7 +67,7 @@ export default function LoginPage() {
         <Button
           type="submit"
           disabled={loading}
-          className="mt-1 bg-gradient-brand text-primary-foreground hover:opacity-90"
+          className="mt-1 bg-primary text-primary-foreground hover:bg-primary/90"
         >
           {loading && <Loader2 className="size-4 animate-spin" />}
           {loading ? "Entrando..." : "Entrar"}

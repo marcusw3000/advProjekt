@@ -11,30 +11,30 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String?
-  credits      Int      @default(15)
-  createdAt    DateTime @default(now())
+  id             String   @id @default(cuid())
+  email          String   @unique
+  passwordHash   String
+  name           String?
+  minutesBalance Int      @default(30)
+  createdAt      DateTime @default(now())
 
-  videos             Video[]
-  creditTransactions CreditTransaction[]
+  videos              Video[]
+  minutesTransactions MinutesTransaction[]
 }
 
-enum CreditReason {
+enum MinutesReason {
   SIGNUP_GRANT
   VIDEO_TRANSCRIPTION
   PURCHASE
 }
 
-model CreditTransaction {
-  id        String       @id @default(cuid())
+model MinutesTransaction {
+  id        String        @id @default(cuid())
   userId    String
   amount    Int
-  reason    CreditReason
+  reason    MinutesReason
   videoId   String?
-  createdAt DateTime     @default(now())
+  createdAt DateTime      @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

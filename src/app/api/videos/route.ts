@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { uploadVideoBlob } from "@/lib/storage";
 import { processTranscriptionJob } from "@/lib/jobs/processJob";
-import { CREDIT_COST_PER_VIDEO, getCredits } from "@/lib/credits";
+import { getMinutesBalance } from "@/lib/minutes";
 
 class InsufficientCreditsError extends Error {}
 
@@ -27,10 +27,22 @@ export async function GET() {
 
 async function createVideoAndStartJob(
   userId: string,
-  data: { title: string; sourceType: "UPLOAD" | "URL"; storageKey?: string; sourceUrl?: string }
+  data: {
+    title: string;
+    sourceType: "UPLOAD" | "URL";
+    storageKey?: string;
+    sourceUrl?: string;
+    estimatedDurationSeconds?: number;
+  }
 ) {
-  const credits = await getCredits(userId);
-  if (credits < CREDIT_COST_PER_VIDEO) throw new InsufficientCreditsError();
+  const minutesBalance = await getMinutesBalance(userId);
+  const estimatedMinutes = data.estimatedDurationSeconds
+    ? Math.max(1, Math.ceil(data.estimatedDurationSeconds / 60))
+    : null;
+
+  if (estimatedMinutes ? minutesBalance < estimatedMinutes : minutesBalance <= 0) {
+    throw new InsufficientCreditsError();
+  }
 
   const video = await db.video.create({
     data: {
@@ -39,6 +51,9 @@ async function createVideoAndStartJob(
       sourceType: data.sourceType,
       storageKey: data.storageKey,
       sourceUrl: data.sourceUrl,
+      durationSeconds: data.estimatedDurationSeconds
+        ? Math.round(data.estimatedDurationSeconds)
+        : null,
       status: "PENDING",
       job: { create: {} },
     },
@@ -60,7 +75,7 @@ export async function POST(req: Request) {
     return await handleCreateVideo(req, session.user.id);
   } catch (err) {
     if (err instanceof InsufficientCreditsError) {
-      return NextResponse.json({ error: "Créditos insuficientes" }, { status: 402 });
+      return NextResponse.json({ error: "Minutos insuficientes" }, { status: 402 });
     }
     throw err;
   }
@@ -85,11 +100,16 @@ async function handleCreateVideo(req: Request, userId: string) {
       }
 
       const title = typeof body.title === "string" && body.title.trim() ? body.title.trim() : "Vídeo";
+      const estimatedDurationSeconds =
+        typeof body.estimatedDurationSeconds === "number" && body.estimatedDurationSeconds > 0
+          ? body.estimatedDurationSeconds
+          : undefined;
 
       const video = await createVideoAndStartJob(userId, {
         title,
         sourceType: "UPLOAD",
         storageKey: blobUrl,
+        estimatedDurationSeconds,
       });
 
       return NextResponse.json(video, { status: 201 });

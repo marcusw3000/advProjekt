@@ -2,15 +2,32 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Coins, LayoutDashboard, LifeBuoy, LogOut, Plus, Wallet } from "lucide-react";
+import {
+  Archive,
+  Folder,
+  HelpCircle,
+  LayoutGrid,
+  LogOut,
+  Plus,
+  Settings,
+  Share2,
+  Timer,
+} from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const NAV_ITEMS = [
-  { href: "/videos", label: "Meus vídeos", icon: LayoutDashboard },
-  { href: "/creditos", label: "Créditos", icon: Wallet },
-  { href: "/suporte", label: "Suporte", icon: LifeBuoy },
+const SIDEBAR_ITEMS = [
+  { href: "/videos", label: "Visão Geral", icon: LayoutGrid },
+  { href: "/pastas", label: "Minhas Pastas", icon: Folder },
+  { href: "/compartilhados", label: "Compartilhados", icon: Share2 },
+  { href: "/arquivados", label: "Arquivados", icon: Archive },
+];
+
+const TOP_NAV_ITEMS = [
+  { href: "/videos", label: "Dashboard" },
+  { href: "/modelos", label: "Modelos" },
+  { href: "/precos", label: "Preços" },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -20,12 +37,12 @@ function isActive(pathname: string, href: string) {
 
 export function AppShell({
   userEmail,
-  credits,
+  minutesBalance,
   onSignOut,
   children,
 }: {
   userEmail: string;
-  credits: number;
+  minutesBalance: number;
   onSignOut: () => void | Promise<void>;
   children: React.ReactNode;
 }) {
@@ -34,44 +51,51 @@ export function AppShell({
   return (
     <div className="flex min-h-screen flex-col bg-background lg:flex-row">
       {/* Mobile top bar */}
-      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-border/60 bg-background/90 px-4 py-3 backdrop-blur-sm lg:hidden">
+      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-border bg-background px-4 py-3 lg:hidden">
         <Logo />
-        <div className="flex items-center gap-1.5 rounded-full border border-border/60 bg-card px-3 py-1">
-          <Coins className="size-3.5 text-tertiary" />
-          <span className="text-xs font-semibold">{credits} Créditos</span>
+        <div className="flex items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1">
+          <Timer className="size-3.5 text-foreground" />
+          <span className="text-xs font-semibold">{minutesBalance} min</span>
         </div>
       </header>
 
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border/40 bg-card py-6 lg:flex">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border bg-white py-6 lg:flex">
         <div className="mb-6 px-6">
           <Logo className="text-xl" />
-          <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            Transcrição de vídeo com IA
-          </p>
+          <p className="mt-1 text-xs text-muted-foreground">LexScript Pro</p>
         </div>
 
-        <div className="mx-4 mb-4 flex items-center gap-2 rounded-xl border border-border/40 bg-background/60 px-3 py-2.5">
-          <Coins className="size-4 text-tertiary" />
-          <div className="flex flex-col leading-tight">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Saldo</span>
-            <span className="text-sm font-semibold">{credits} Créditos</span>
-          </div>
-        </div>
+        {/* Top nav (Dashboard / Modelos / Preços) mirrored here for desktop discoverability */}
+        <nav className="mb-4 flex items-center gap-4 px-6 text-sm font-medium">
+          {TOP_NAV_ITEMS.map(({ href, label }) => (
+            <Link
+              key={href}
+              href={href}
+              className={cn(
+                isActive(pathname, href)
+                  ? "text-foreground underline underline-offset-4"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
 
         <div className="mb-4 px-4">
           <Button
             render={<Link href="/videos/new" />}
             nativeButton={false}
-            className="w-full bg-gradient-brand text-primary-foreground hover:opacity-90"
+            className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
           >
             <Plus className="size-4" />
-            Novo upload
+            Novo Arquivo
           </Button>
         </div>
 
         <nav className="flex-1 space-y-1 px-3">
-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+          {SIDEBAR_ITEMS.map(({ href, label, icon: Icon }) => {
             const active = isActive(pathname, href);
             return (
               <Link
@@ -80,8 +104,8 @@ export function AppShell({
                 className={cn(
                   "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
                   active
-                    ? "bg-primary/15 text-primary"
-                    : "text-muted-foreground hover:bg-accent/40 hover:text-foreground"
+                    ? "bg-accent text-accent-foreground"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 )}
               >
                 <Icon className="size-[18px]" />
@@ -91,12 +115,43 @@ export function AppShell({
           })}
         </nav>
 
-        <div className="space-y-1 border-t border-border/40 px-3 pt-4">
+        <div className="mx-4 mb-4 rounded-xl bg-primary p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary-foreground/70">
+            Promoção
+          </p>
+          <p className="mt-1 text-sm font-semibold text-primary-foreground">
+            Upgrade para Premium
+          </p>
+          <Button
+            render={<Link href="/precos" />}
+            nativeButton={false}
+            className="mt-3 w-full bg-white text-primary hover:bg-white/90"
+            size="sm"
+          >
+            Ver Planos
+          </Button>
+        </div>
+
+        <div className="space-y-1 border-t border-border px-3 pt-4">
           <div className="truncate px-3 pb-2 text-xs text-muted-foreground">{userEmail}</div>
+          <Link
+            href="/suporte"
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          >
+            <HelpCircle className="size-[18px]" />
+            Ajuda
+          </Link>
+          <Link
+            href="/configuracoes"
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          >
+            <Settings className="size-[18px]" />
+            Configurações
+          </Link>
           <button
             type="button"
             onClick={onSignOut}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/40 hover:text-foreground"
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
           >
             <LogOut className="size-[18px]" />
             Sair
@@ -107,8 +162,8 @@ export function AppShell({
       <main className="flex-1 pb-20 lg:pb-0">{children}</main>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 left-0 z-40 flex w-full items-center justify-around border-t border-border/40 bg-card py-2 lg:hidden">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+      <nav className="fixed bottom-0 left-0 z-40 flex w-full items-center justify-around border-t border-border bg-white py-2 lg:hidden">
+        {SIDEBAR_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = isActive(pathname, href);
           return (
             <Link
@@ -116,14 +171,24 @@ export function AppShell({
               href={href}
               className={cn(
                 "flex flex-col items-center gap-1 px-3 py-1 text-[11px] font-medium",
-                active ? "text-primary" : "text-muted-foreground"
+                active ? "text-foreground" : "text-muted-foreground"
               )}
             >
               <Icon className="size-5" />
-              {label === "Meus vídeos" ? "Vídeos" : label}
+              {label === "Visão Geral" ? "Início" : label}
             </Link>
           );
         })}
+        <Link
+          href="/precos"
+          className={cn(
+            "flex flex-col items-center gap-1 px-3 py-1 text-[11px] font-medium",
+            isActive(pathname, "/precos") ? "text-foreground" : "text-muted-foreground"
+          )}
+        >
+          <Timer className="size-5" />
+          Preços
+        </Link>
       </nav>
     </div>
   );

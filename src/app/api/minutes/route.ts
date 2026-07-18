@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { getCredits } from "@/lib/credits";
+import { getMinutesBalance } from "@/lib/minutes";
 
 export async function GET() {
   const session = await auth();
@@ -8,6 +8,6 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const credits = await getCredits(session.user.id);
-  return NextResponse.json({ credits });
+  const minutesBalance = await getMinutesBalance(session.user.id);
+  return NextResponse.json({ minutesBalance });
 }
