@@ -3,6 +3,9 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { uploadVideoBlob } from "@/lib/storage";
 import { processTranscriptionJob } from "@/lib/jobs/processJob";
+import { CREDIT_COST_PER_VIDEO, getCredits } from "@/lib/credits";
+
+class InsufficientCreditsError extends Error {}
 
 export const runtime = "nodejs";
 
@@ -26,6 +29,9 @@ async function createVideoAndStartJob(
   userId: string,
   data: { title: string; sourceType: "UPLOAD" | "URL"; storageKey?: string; sourceUrl?: string }
 ) {
+  const credits = await getCredits(userId);
+  if (credits < CREDIT_COST_PER_VIDEO) throw new InsufficientCreditsError();
+
   const video = await db.video.create({
     data: {
       userId,
@@ -50,6 +56,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  try {
+    return await handleCreateVideo(req, session.user.id);
+  } catch (err) {
+    if (err instanceof InsufficientCreditsError) {
+      return NextResponse.json({ error: "Créditos insuficientes" }, { status: 402 });
+    }
+    throw err;
+  }
+}
+
+async function handleCreateVideo(req: Request, userId: string) {
   const contentType = req.headers.get("content-type") ?? "";
 
   if (contentType.includes("application/json")) {
@@ -69,7 +86,7 @@ export async function POST(req: Request) {
 
       const title = typeof body.title === "string" && body.title.trim() ? body.title.trim() : "Vídeo";
 
-      const video = await createVideoAndStartJob(session.user.id, {
+      const video = await createVideoAndStartJob(userId, {
         title,
         sourceType: "UPLOAD",
         storageKey: blobUrl,
@@ -95,7 +112,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
     }
 
-    const video = await createVideoAndStartJob(session.user.id, {
+    const video = await createVideoAndStartJob(userId, {
       title,
       sourceType: "URL",
       sourceUrl,
@@ -116,11 +133,11 @@ export async function POST(req: Request) {
   }
 
   const title = typeof titleField === "string" && titleField.trim() ? titleField.trim() : file.name;
-  const key = `videos/${session.user.id}/${Date.now()}-${file.name}`;
+  const key = `videos/${userId}/${Date.now()}-${file.name}`;
 
   const url = await uploadVideoBlob(key, file);
 
-  const video = await createVideoAndStartJob(session.user.id, {
+  const video = await createVideoAndStartJob(userId, {
     title,
     sourceType: "UPLOAD",
     storageKey: url,

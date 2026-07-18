@@ -1,7 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Pencil } from "lucide-react";
 import { formatMs } from "@/lib/time";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card } from "@/components/ui/card";
 
 export type TranscriptSegmentData = {
   id: string;
@@ -12,17 +18,62 @@ export type TranscriptSegmentData = {
   text: string;
 };
 
+const SPEAKER_COLORS = [
+  { bg: "oklch(0.7 0.15 30)", fg: "oklch(0.2 0 0)" },
+  { bg: "oklch(0.7 0.15 90)", fg: "oklch(0.2 0 0)" },
+  { bg: "oklch(0.7 0.15 150)", fg: "oklch(0.2 0 0)" },
+  { bg: "oklch(0.7 0.15 210)", fg: "oklch(0.2 0 0)" },
+  { bg: "oklch(0.7 0.15 270)", fg: "oklch(0.2 0 0)" },
+  { bg: "oklch(0.7 0.15 330)", fg: "oklch(0.2 0 0)" },
+  { bg: "oklch(0.7 0.15 60)", fg: "oklch(0.2 0 0)" },
+  { bg: "oklch(0.7 0.15 180)", fg: "oklch(0.2 0 0)" },
+];
+
 export function TranscriptViewer({
   videoId,
   segments,
   onSegmentsChange,
+  activeSegmentId,
+  onSeek,
 }: {
   videoId: string;
   segments: TranscriptSegmentData[];
   onSegmentsChange: (segments: TranscriptSegmentData[]) => void;
+  activeSegmentId?: string | null;
+  onSeek?: (startMs: number) => void;
 }) {
   const [editingSpeaker, setEditingSpeaker] = useState<string | null>(null);
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
+  const [renameMode, setRenameMode] = useState(false);
+
+  const speakers = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const s of segments) {
+      if (!seen.has(s.originalSpeakerLabel)) seen.set(s.originalSpeakerLabel, s.speakerLabel);
+    }
+    return Array.from(seen.entries()).map(([originalSpeakerLabel, speakerLabel]) => ({
+      originalSpeakerLabel,
+      speakerLabel,
+    }));
+  }, [segments]);
+
+  const speakerColorMap = useMemo(() => {
+    const map = new Map<string, (typeof SPEAKER_COLORS)[number]>();
+    speakers.forEach((sp, i) => map.set(sp.originalSpeakerLabel, SPEAKER_COLORS[i % SPEAKER_COLORS.length]));
+    return map;
+  }, [speakers]);
+
+  const [selectedSpeakers, setSelectedSpeakers] = useState<Set<string> | null>(null);
+  const activeSelection = selectedSpeakers ?? new Set(speakers.map((s) => s.originalSpeakerLabel));
+
+  function toggleSpeaker(originalSpeakerLabel: string) {
+    const next = new Set(activeSelection);
+    if (next.has(originalSpeakerLabel)) next.delete(originalSpeakerLabel);
+    else next.add(originalSpeakerLabel);
+    setSelectedSpeakers(next);
+  }
+
+  const filteredSegments = segments.filter((s) => activeSelection.has(s.originalSpeakerLabel));
 
   async function renameSpeaker(originalSpeakerLabel: string, newLabel: string) {
     if (!newLabel.trim()) {
@@ -56,19 +107,95 @@ export function TranscriptViewer({
   }
 
   if (segments.length === 0) {
-    return <p className="text-zinc-500 text-sm">Nenhum segmento de transcrição ainda.</p>;
+    return <p className="text-sm text-muted-foreground">Nenhum segmento de transcrição ainda.</p>;
   }
 
   return (
-    <ul className="flex flex-col gap-3">
-      {segments.map((segment) => (
-        <li key={segment.id} className="flex gap-3 rounded border px-3 py-2">
-          <span className="w-28 shrink-0 font-mono text-xs text-zinc-500">
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => setSelectedSpeakers(null)}
+          className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+        >
+          Todos
+        </button>
+        {speakers.map((sp) => {
+          const color = speakerColorMap.get(sp.originalSpeakerLabel)!;
+          const active = activeSelection.has(sp.originalSpeakerLabel);
+
+          if (editingSpeaker === sp.originalSpeakerLabel) {
+            return (
+              <Input
+                key={sp.originalSpeakerLabel}
+                autoFocus
+                defaultValue={sp.speakerLabel}
+                onBlur={(e) => renameSpeaker(sp.originalSpeakerLabel, e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.currentTarget.blur();
+                  if (e.key === "Escape") setEditingSpeaker(null);
+                }}
+                className="h-6 w-24 text-xs font-semibold"
+              />
+            );
+          }
+
+          return (
+            <button
+              key={sp.originalSpeakerLabel}
+              type="button"
+              onClick={() =>
+                renameMode ? setEditingSpeaker(sp.originalSpeakerLabel) : toggleSpeaker(sp.originalSpeakerLabel)
+              }
+            >
+              <Badge
+                variant="outline"
+                className="cursor-pointer"
+                style={{
+                  backgroundColor: active ? color.bg : "transparent",
+                  color: active ? color.fg : undefined,
+                  borderColor: color.bg,
+                  opacity: active ? 1 : 0.5,
+                }}
+              >
+                {sp.speakerLabel}
+                {renameMode && <Pencil className="size-3" />}
+              </Badge>
+            </button>
+          );
+        })}
+        <Button
+          type="button"
+          variant={renameMode ? "secondary" : "outline"}
+          size="xs"
+          onClick={() => setRenameMode((v) => !v)}
+          className="ml-auto"
+        >
+          <Pencil className="size-3.5" />
+          {renameMode ? "Concluir" : "Editar nomes"}
+        </Button>
+      </div>
+      {renameMode && (
+        <p className="text-xs text-muted-foreground">Clique em um locutor acima pra renomear.</p>
+      )}
+
+      {filteredSegments.map((segment) => {
+        const color = speakerColorMap.get(segment.originalSpeakerLabel)!;
+        return (
+        <Card
+          key={segment.id}
+          onClick={() => onSeek?.(segment.startMs)}
+          style={{ borderLeft: `3px solid ${color.bg}` }}
+          className={`flex-row gap-3 px-3 py-2.5 ring-border/60 ${
+            onSeek ? "cursor-pointer" : ""
+          } ${activeSegmentId === segment.id ? "bg-accent/60 ring-primary/40" : ""}`}
+        >
+          <span className="w-24 shrink-0 pt-0.5 font-mono text-xs text-muted-foreground">
             {formatMs(segment.startMs)}–{formatMs(segment.endMs)}
           </span>
           <div className="flex-1">
             {editingSpeaker === segment.originalSpeakerLabel ? (
-              <input
+              <Input
                 autoFocus
                 defaultValue={segment.speakerLabel}
                 onBlur={(e) => renameSpeaker(segment.originalSpeakerLabel, e.target.value)}
@@ -76,39 +203,53 @@ export function TranscriptViewer({
                   if (e.key === "Enter") e.currentTarget.blur();
                   if (e.key === "Escape") setEditingSpeaker(null);
                 }}
-                className="rounded border px-1 text-xs font-semibold"
+                onClick={(e) => e.stopPropagation()}
+                className="h-6 w-fit text-xs font-semibold"
               />
             ) : (
               <button
                 type="button"
-                onClick={() => setEditingSpeaker(segment.originalSpeakerLabel)}
-                className="text-xs font-semibold text-zinc-700 hover:underline"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingSpeaker(segment.originalSpeakerLabel);
+                }}
               >
-                {segment.speakerLabel}
+                <Badge
+                  variant="outline"
+                  className="cursor-pointer hover:opacity-80"
+                  style={{ backgroundColor: color.bg, color: color.fg, borderColor: color.bg }}
+                >
+                  {segment.speakerLabel}
+                </Badge>
               </button>
             )}
 
             {editingSegmentId === segment.id ? (
-              <textarea
+              <Textarea
                 autoFocus
                 defaultValue={segment.text}
                 onBlur={(e) => editText(segment.id, e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Escape") setEditingSegmentId(null);
                 }}
-                className="mt-1 w-full rounded border px-2 py-1"
+                onClick={(e) => e.stopPropagation()}
+                className="mt-1.5"
               />
             ) : (
               <p
-                onClick={() => setEditingSegmentId(segment.id)}
-                className="cursor-text"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingSegmentId(segment.id);
+                }}
+                className="mt-1.5 cursor-text"
               >
                 {segment.text}
               </p>
             )}
           </div>
-        </li>
-      ))}
-    </ul>
+        </Card>
+        );
+      })}
+    </div>
   );
 }

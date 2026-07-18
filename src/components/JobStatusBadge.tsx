@@ -1,3 +1,6 @@
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+
 const LABELS: Record<string, string> = {
   PENDING: "Na fila",
   DOWNLOADING: "Baixando...",
@@ -6,20 +9,26 @@ const LABELS: Record<string, string> = {
   FAILED: "Falhou",
 };
 
-const COLORS: Record<string, string> = {
-  PENDING: "bg-zinc-200 text-zinc-700",
-  DOWNLOADING: "bg-blue-100 text-blue-700",
-  PROCESSING: "bg-blue-100 text-blue-700",
-  COMPLETE: "bg-green-100 text-green-700",
-  FAILED: "bg-red-100 text-red-700",
+const STYLES: Record<string, string> = {
+  PENDING: "bg-secondary text-secondary-foreground",
+  DOWNLOADING: "bg-primary/15 text-primary",
+  PROCESSING: "bg-primary/15 text-primary",
+  COMPLETE: "bg-emerald-500/15 text-emerald-400",
+  FAILED: "bg-destructive/15 text-destructive",
 };
+
+const ACTIVE_STATUSES = new Set(["DOWNLOADING", "PROCESSING"]);
 
 export function JobStatusBadge({ status }: { status: string }) {
   return (
-    <span
-      className={`rounded-full px-2 py-1 text-xs font-medium ${COLORS[status] ?? "bg-zinc-200 text-zinc-700"}`}
+    <Badge
+      variant="outline"
+      className={cn("gap-1.5 border-transparent", STYLES[status] ?? STYLES.PENDING)}
     >
+      {ACTIVE_STATUSES.has(status) && (
+        <span className="size-1.5 rounded-full bg-current animate-pulse" />
+      )}
       {LABELS[status] ?? status}
-    </span>
+    </Badge>
   );
 }

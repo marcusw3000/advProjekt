@@ -2,9 +2,10 @@ import { db } from "@/lib/db";
 import { assemblyAiProvider } from "@/lib/asr/assemblyai";
 import { guessSpeakerNames } from "@/lib/jobs/guessSpeakerNames";
 import { guessAddressedSpeakerNames } from "@/lib/jobs/guessAddressedSpeakerNames";
+import { debitForCompletedVideo } from "@/lib/credits";
 
 export async function finalizeJobFromAsr(jobId: string) {
-  const job = await db.transcriptionJob.findUnique({ where: { id: jobId } });
+  const job = await db.transcriptionJob.findUnique({ where: { id: jobId }, include: { video: true } });
   if (!job || !job.asrJobId) return;
 
   const transcript = await assemblyAiProvider.getTranscript(job.asrJobId);
@@ -25,9 +26,9 @@ export async function finalizeJobFromAsr(jobId: string) {
     ...guessSpeakerNames(transcript.utterances),
   };
 
-  await db.$transaction([
-    db.transcriptSegment.deleteMany({ where: { videoId: job.videoId } }),
-    db.transcriptSegment.createMany({
+  await db.$transaction(async (tx) => {
+    await tx.transcriptSegment.deleteMany({ where: { videoId: job.videoId } });
+    await tx.transcriptSegment.createMany({
       data: transcript.utterances.map((u, index) => ({
         videoId: job.videoId,
         speakerLabel: speakerNames[u.speaker] ?? u.speaker,
@@ -37,11 +38,12 @@ export async function finalizeJobFromAsr(jobId: string) {
         text: u.text,
         order: index,
       })),
-    }),
-    db.transcriptionJob.update({
+    });
+    await tx.transcriptionJob.update({
       where: { id: jobId },
       data: { status: "COMPLETE", completedAt: new Date() },
-    }),
-    db.video.update({ where: { id: job.videoId }, data: { status: "COMPLETE" } }),
-  ]);
+    });
+    await tx.video.update({ where: { id: job.videoId }, data: { status: "COMPLETE" } });
+    await debitForCompletedVideo(tx, job.video.userId, job.videoId);
+  });
 }

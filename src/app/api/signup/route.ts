@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { SIGNUP_GRANT_CREDITS } from "@/lib/creditsConfig";
 
 const signupSchema = z.object({
   email: z.string().email(),
@@ -24,8 +25,14 @@ export async function POST(req: Request) {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const user = await db.user.create({
-    data: { email, passwordHash, name },
+  const user = await db.$transaction(async (tx) => {
+    const created = await tx.user.create({
+      data: { email, passwordHash, name },
+    });
+    await tx.creditTransaction.create({
+      data: { userId: created.id, amount: SIGNUP_GRANT_CREDITS, reason: "SIGNUP_GRANT" },
+    });
+    return created;
   });
 
   return NextResponse.json({ id: user.id, email: user.email });

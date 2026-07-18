@@ -4,6 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { Loader2 } from "lucide-react";
+import { AuthShell } from "@/components/auth-shell";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -48,48 +53,57 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-4 px-4">
-      <h1 className="text-2xl font-semibold">Criar conta</h1>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <input
-          type="text"
-          placeholder="Nome (opcional)"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="rounded border px-3 py-2"
-        />
-        <input
-          type="email"
-          placeholder="Email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="rounded border px-3 py-2"
-        />
-        <input
-          type="password"
-          placeholder="Senha (mín. 8 caracteres)"
-          required
-          minLength={8}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="rounded border px-3 py-2"
-        />
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <button
+    <AuthShell title="Criar conta">
+      <form onSubmit={handleSubmit} className="flex w-full flex-col gap-4">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="name">Nome (opcional)</Label>
+          <Input
+            id="name"
+            type="text"
+            placeholder="Seu nome"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            placeholder="voce@empresa.com"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="password">Senha</Label>
+          <Input
+            id="password"
+            type="password"
+            placeholder="mín. 8 caracteres"
+            required
+            minLength={8}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <Button
           type="submit"
           disabled={loading}
-          className="rounded bg-black px-3 py-2 text-white disabled:opacity-50"
+          className="mt-1 bg-gradient-brand text-primary-foreground hover:opacity-90"
         >
+          {loading && <Loader2 className="size-4 animate-spin" />}
           {loading ? "Criando..." : "Criar conta"}
-        </button>
+        </Button>
       </form>
-      <p className="text-sm">
+      <p className="text-sm text-muted-foreground">
         Já tem conta?{" "}
-        <Link href="/login" className="underline">
+        <Link href="/login" className="font-medium text-primary hover:underline">
           Entrar
         </Link>
       </p>
-    </div>
+    </AuthShell>
   );
 }

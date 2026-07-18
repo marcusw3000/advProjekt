@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -21,15 +22,20 @@ export default async function VideoDetailPage({
   if (!video || video.userId !== session.user.id) notFound();
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-2xl flex-col gap-4 px-4 py-8">
-      <Link href="/videos" className="text-sm underline">
-        &larr; Voltar
+    <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-8 md:px-8 md:py-10">
+      <Link
+        href="/videos"
+        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="size-4" />
+        Voltar
       </Link>
-      <h1 className="text-2xl font-semibold">{video.title}</h1>
+      <h1 className="font-heading text-2xl text-foreground">{video.title}</h1>
       <VideoDetailClient
         videoId={video.id}
         initialStatus={video.status}
         initialSegments={video.segments}
+        videoSrc={video.sourceType === "UPLOAD" ? video.storageKey : null}
       />
     </div>
   );

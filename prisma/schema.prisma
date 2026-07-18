@@ -15,9 +15,30 @@ model User {
   email        String   @unique
   passwordHash String
   name         String?
+  credits      Int      @default(15)
   createdAt    DateTime @default(now())
 
-  videos Video[]
+  videos             Video[]
+  creditTransactions CreditTransaction[]
+}
+
+enum CreditReason {
+  SIGNUP_GRANT
+  VIDEO_TRANSCRIPTION
+  PURCHASE
+}
+
+model CreditTransaction {
+  id        String       @id @default(cuid())
+  userId    String
+  amount    Int
+  reason    CreditReason
+  videoId   String?
+  createdAt DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 enum VideoSourceType {
