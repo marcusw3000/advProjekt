@@ -2,6 +2,12 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
 const r2PublicUrl = process.env.R2_PUBLIC_URL ?? "";
+// Presigned uploads/downloads PUT/GET directly against the R2 S3 API endpoint from the
+// browser — a different origin than the public read domain (r2PublicUrl) — so connect-src
+// needs both.
+const r2ApiOrigin = process.env.R2_ACCOUNT_ID
+  ? `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
+  : "";
 
 const csp = [
   "default-src 'self'",
@@ -10,7 +16,7 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   `img-src 'self' data: ${r2PublicUrl}`,
   `media-src 'self' ${r2PublicUrl}`,
-  `connect-src 'self' ${r2PublicUrl}`,
+  `connect-src 'self' ${r2PublicUrl} ${r2ApiOrigin}`,
   "font-src 'self'",
   "frame-ancestors 'none'",
   "base-uri 'self'",
