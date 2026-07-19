@@ -124,7 +124,7 @@ export default function NewVideoPage() {
           headers: { "Content-Type": file.type || "application/octet-stream" },
           body: file,
         });
-        if (!putRes.ok) throw new Error("Falha ao enviar arquivo");
+        if (!putRes.ok) throw new Error(`Falha ao enviar arquivo (status ${putRes.status})`);
 
         res = await fetch("/api/videos", {
           method: "POST",
@@ -138,9 +138,9 @@ export default function NewVideoPage() {
             folderId: folderId || undefined,
           }),
         });
-      } catch {
+      } catch (err) {
         setLoading(false);
-        setError("Falha ao enviar vídeo");
+        setError(err instanceof Error ? err.message : "Falha ao enviar vídeo");
         return;
       }
     } else {
