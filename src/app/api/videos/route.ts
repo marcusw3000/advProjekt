@@ -8,6 +8,11 @@ import { checkRateLimit } from "@/lib/rateLimit";
 
 class InsufficientCreditsError extends Error {}
 
+// fileSizeBytes is a Prisma BigInt — JSON.stringify (used by NextResponse.json) can't serialize it natively.
+function serializeVideo<T extends { fileSizeBytes: bigint | null }>(video: T) {
+  return { ...video, fileSizeBytes: video.fileSizeBytes?.toString() ?? null };
+}
+
 export const runtime = "nodejs";
 
 const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB sanity cap for MVP
@@ -23,7 +28,7 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json(videos);
+  return NextResponse.json(videos.map(serializeVideo));
 }
 
 async function resolveFolderId(userId: string, folderId: unknown): Promise<string | undefined | null> {
@@ -154,7 +159,7 @@ async function handleCreateVideo(req: Request, userId: string) {
         folderId,
       });
 
-      return NextResponse.json(video, { status: 201 });
+      return NextResponse.json(serializeVideo(video), { status: 201 });
     }
 
     const sourceUrl = typeof body.sourceUrl === "string" ? body.sourceUrl.trim() : "";
@@ -181,7 +186,7 @@ async function handleCreateVideo(req: Request, userId: string) {
       folderId,
     });
 
-    return NextResponse.json(video, { status: 201 });
+    return NextResponse.json(serializeVideo(video), { status: 201 });
   }
 
   const form = await req.formData();
@@ -208,5 +213,5 @@ async function handleCreateVideo(req: Request, userId: string) {
     fileSizeBytes: file.size,
   });
 
-  return NextResponse.json(video, { status: 201 });
+  return NextResponse.json(serializeVideo(video), { status: 201 });
 }
