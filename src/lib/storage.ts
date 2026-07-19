@@ -17,6 +17,10 @@ const s3 = new S3Client({
     accessKeyId: process.env.R2_ACCESS_KEY_ID ?? "",
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? "",
   },
+  // R2 doesn't support the SDK's default checksum trailers/headers — a presigned URL
+  // generated with checksum params fails signature validation when the browser's PUT
+  // doesn't send matching x-amz-checksum-* headers. Only compute when explicitly requested.
+  requestChecksumCalculation: "WHEN_REQUIRED",
 });
 
 function keyToPublicUrl(key: string) {
