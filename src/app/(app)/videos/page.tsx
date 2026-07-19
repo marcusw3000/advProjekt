@@ -90,65 +90,75 @@ export default async function VideosPage() {
             </Button>
           </Card>
         ) : (
-          <Card className="mt-4 gap-0 overflow-hidden p-0">
-            <div className="grid grid-cols-[minmax(0,1fr)_112px_88px_110px_84px] items-center gap-4 border-b border-border bg-secondary/60 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          <Card className="mt-4 gap-0 overflow-hidden p-0" aria-label="Lista de audiências">
+            <div
+              className="hidden items-center gap-4 border-b border-border bg-secondary/60 px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground md:grid md:grid-cols-[minmax(0,1fr)_112px_88px_110px_84px]"
+              aria-hidden="true"
+            >
               <span>Nome do Arquivo</span>
               <span>Data</span>
               <span>Duração</span>
               <span>Status</span>
               <span className="text-right">Ações</span>
             </div>
-            {videos.map((video) => (
-              <div
-                key={video.id}
-                className="grid grid-cols-[minmax(0,1fr)_112px_88px_110px_84px] items-center gap-4 border-b border-border px-4 py-3 last:border-0 hover:bg-secondary/40"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary">
-                    {video.sourceType === "URL" ? (
-                      <Link2 className="size-4 text-muted-foreground" />
-                    ) : (
-                      <Upload className="size-4 text-muted-foreground" />
-                    )}
+            {videos.map((video) => {
+              const dateLabel = new Date(video.createdAt).toLocaleDateString("pt-BR", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              });
+              return (
+                <div
+                  key={video.id}
+                  className="flex flex-col gap-3 border-b border-border px-4 py-3 last:border-0 hover:bg-secondary/40 md:grid md:grid-cols-[minmax(0,1fr)_112px_88px_110px_84px] md:items-center md:gap-4"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary">
+                      {video.sourceType === "URL" ? (
+                        <Link2 className="size-4 text-muted-foreground" aria-hidden="true" />
+                      ) : (
+                        <Upload className="size-4 text-muted-foreground" aria-hidden="true" />
+                      )}
+                    </div>
+                    <VideoTitleEditor
+                      videoId={video.id}
+                      initialTitle={video.title}
+                      className="text-sm font-medium text-foreground"
+                      inputClassName="text-sm"
+                    />
                   </div>
-                  <VideoTitleEditor
-                    videoId={video.id}
-                    initialTitle={video.title}
-                    className="text-sm font-medium text-foreground"
-                    inputClassName="text-sm"
-                  />
+
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground md:contents">
+                    <span className="md:hidden">Data:</span>
+                    <span>{dateLabel}</span>
+                    <span className="md:hidden">Duração:</span>
+                    <span className="font-mono">{formatDuration(video.durationSeconds)}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 md:contents">
+                    <JobStatusBadge status={video.status} />
+                    <div className="flex items-center justify-end gap-1">
+                      <Link
+                        href={`/videos/${video.id}`}
+                        aria-label={`Ver transcrição de ${video.title}`}
+                        className="flex size-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground md:size-8"
+                      >
+                        <Eye className="size-4" aria-hidden="true" />
+                      </Link>
+                      {video.status === "COMPLETE" && (
+                        <a
+                          href={`/api/videos/${video.id}/export?format=txt`}
+                          aria-label={`Baixar transcrição de ${video.title} em texto`}
+                          className="flex size-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground md:size-8"
+                        >
+                          <Download className="size-4" aria-hidden="true" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <span className="text-sm text-muted-foreground">
-                  {new Date(video.createdAt).toLocaleDateString("pt-BR", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })}
-                </span>
-                <span className="font-mono text-sm text-muted-foreground">
-                  {formatDuration(video.durationSeconds)}
-                </span>
-                <div>
-                  <JobStatusBadge status={video.status} />
-                </div>
-                <div className="flex items-center justify-end gap-1">
-                  <Link
-                    href={`/videos/${video.id}`}
-                    className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
-                  >
-                    <Eye className="size-4" />
-                  </Link>
-                  {video.status === "COMPLETE" && (
-                    <a
-                      href={`/api/videos/${video.id}/export?format=txt`}
-                      className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
-                    >
-                      <Download className="size-4" />
-                    </a>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </Card>
         )}
       </div>

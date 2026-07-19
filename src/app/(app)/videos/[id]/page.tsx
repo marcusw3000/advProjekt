@@ -26,6 +26,8 @@ export default async function VideoDetailPage({
 
   if (!video || video.userId !== session.user.id) notFound();
 
+  const videoSrc = video.sourceType === "UPLOAD" ? video.storageKey : null;
+
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-8 md:px-8 md:py-10">
       <Link
@@ -48,7 +50,7 @@ export default async function VideoDetailPage({
         videoId={video.id}
         initialStatus={video.status}
         initialSegments={video.segments}
-        videoSrc={video.sourceType === "UPLOAD" ? video.storageKey : null}
+        videoSrc={videoSrc}
         initialSummary={video.summary}
         initialSummaryStatus={video.summaryStatus}
       />

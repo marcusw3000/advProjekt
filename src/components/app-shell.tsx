@@ -56,8 +56,11 @@ export function AppShell({
       {/* Mobile top bar */}
       <header className="sticky top-0 z-40 flex items-center justify-between border-b border-border bg-background px-4 py-3 lg:hidden">
         <Logo />
-        <div className="flex items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1">
-          <Timer className="size-3.5 text-foreground" />
+        <div
+          className="flex items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1"
+          aria-label={`${minutesBalance} minutos de créditos disponíveis`}
+        >
+          <Timer className="size-3.5 text-foreground" aria-hidden="true" />
           <span className="text-xs font-semibold">{minutesBalance} min</span>
         </div>
       </header>
@@ -174,31 +177,36 @@ export function AppShell({
       <main className="flex-1 pb-20 lg:pb-0">{children}</main>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed bottom-0 left-0 z-40 flex w-full items-center justify-around border-t border-border bg-white py-2 lg:hidden">
+      <nav
+        aria-label="Navegação principal"
+        className="fixed bottom-0 left-0 z-40 flex w-full items-center justify-around border-t border-border bg-white py-1 lg:hidden"
+      >
         {SIDEBAR_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = isActive(pathname, href);
           return (
             <Link
               key={href}
               href={href}
+              aria-current={active ? "page" : undefined}
               className={cn(
-                "flex flex-col items-center gap-1 px-3 py-1 text-[11px] font-medium",
+                "flex min-h-11 min-w-11 flex-col items-center justify-center gap-1 px-3 py-1.5 text-[11px] font-medium",
                 active ? "text-foreground" : "text-muted-foreground"
               )}
             >
-              <Icon className="size-5" />
+              <Icon className="size-5" aria-hidden="true" />
               {label === "Visão Geral" ? "Início" : label}
             </Link>
           );
         })}
         <Link
           href="/precos"
+          aria-current={isActive(pathname, "/precos") ? "page" : undefined}
           className={cn(
-            "flex flex-col items-center gap-1 px-3 py-1 text-[11px] font-medium",
+            "flex min-h-11 min-w-11 flex-col items-center justify-center gap-1 px-3 py-1.5 text-[11px] font-medium",
             isActive(pathname, "/precos") ? "text-foreground" : "text-muted-foreground"
           )}
         >
-          <Timer className="size-5" />
+          <Timer className="size-5" aria-hidden="true" />
           Preços
         </Link>
       </nav>
