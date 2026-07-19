@@ -20,6 +20,7 @@ model User {
   createdAt      DateTime @default(now())
 
   videos              Video[]
+  folders             Folder[]
   minutesTransactions MinutesTransaction[]
   passwordResetTokens PasswordResetToken[]
   supportTickets      SupportTicket[]
@@ -33,16 +34,19 @@ enum MinutesReason {
 }
 
 model MinutesTransaction {
-  id        String        @id @default(cuid())
-  userId    String
-  amount    Int
-  reason    MinutesReason
-  videoId   String?
-  createdAt DateTime      @default(now())
+  id          String        @id @default(cuid())
+  userId      String
+  amount      Int
+  reason      MinutesReason
+  videoId     String?
+  amountCents Int?
+  currency    String?       @default("BRL")
+  createdAt   DateTime      @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([createdAt])
 }
 
 model PasswordResetToken {
@@ -86,10 +90,17 @@ enum JobStatus {
 model Video {
   id                 String          @id @default(cuid())
   userId             String
+  folderId           String?
   title              String
   sourceType         VideoSourceType
   sourceUrl          String?
   storageKey         String?
+  storageProvider    String          @default("r2")
+  storageBucket      String?
+  mimeType           String?
+  fileSizeBytes      BigInt?
+  uploadedAt         DateTime?
+  deletedAt          DateTime?
   durationSeconds    Int?
   status             JobStatus       @default(PENDING)
   createdAt          DateTime        @default(now())
@@ -99,8 +110,22 @@ model Video {
   summaryGeneratedAt DateTime?
 
   user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  folder   Folder?            @relation(fields: [folderId], references: [id], onDelete: SetNull)
   job      TranscriptionJob?
   segments TranscriptSegment[]
+
+  @@index([userId])
+  @@index([folderId])
+}
+
+model Folder {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  createdAt DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videos Video[]
 
   @@index([userId])
 }

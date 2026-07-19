@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -25,14 +26,25 @@ export async function GET() {
   return NextResponse.json(videos);
 }
 
+async function resolveFolderId(userId: string, folderId: unknown): Promise<string | undefined | null> {
+  if (folderId === undefined) return undefined;
+  if (typeof folderId !== "string" || !folderId) return null;
+  const folder = await db.folder.findUnique({ where: { id: folderId } });
+  if (!folder || folder.userId !== userId) return null;
+  return folderId;
+}
+
 async function createVideoAndStartJob(
   userId: string,
   data: {
     title: string;
     sourceType: "UPLOAD" | "URL";
     storageKey?: string;
+    mimeType?: string;
+    fileSizeBytes?: number;
     sourceUrl?: string;
     estimatedDurationSeconds?: number;
+    folderId?: string;
   }
 ) {
   const estimatedMinutes = data.estimatedDurationSeconds
@@ -56,7 +68,11 @@ async function createVideoAndStartJob(
           title: data.title,
           sourceType: data.sourceType,
           storageKey: data.storageKey,
+          mimeType: data.mimeType,
+          fileSizeBytes: data.fileSizeBytes ? BigInt(data.fileSizeBytes) : undefined,
+          uploadedAt: data.storageKey ? new Date() : undefined,
           sourceUrl: data.sourceUrl,
+          folderId: data.folderId,
           durationSeconds: data.estimatedDurationSeconds
             ? Math.round(data.estimatedDurationSeconds)
             : null,
@@ -101,16 +117,23 @@ async function handleCreateVideo(req: Request, userId: string) {
   if (contentType.includes("application/json")) {
     const body = await req.json();
 
-    const blobUrl = typeof body.blobUrl === "string" ? body.blobUrl.trim() : "";
-    if (blobUrl) {
-      let parsedBlobUrl: URL;
+    const folderId = await resolveFolderId(userId, body.folderId);
+    if (folderId === null) {
+      return NextResponse.json({ error: "Pasta inválida" }, { status: 400 });
+    }
+
+    const storageUrl = typeof body.storageUrl === "string" ? body.storageUrl.trim() : "";
+    if (storageUrl) {
+      let parsedStorageUrl: URL;
+      let r2PublicUrl: URL;
       try {
-        parsedBlobUrl = new URL(blobUrl);
+        parsedStorageUrl = new URL(storageUrl);
+        r2PublicUrl = new URL(process.env.R2_PUBLIC_URL ?? "");
       } catch {
-        return NextResponse.json({ error: "Invalid blobUrl" }, { status: 400 });
+        return NextResponse.json({ error: "Invalid storageUrl" }, { status: 400 });
       }
-      if (parsedBlobUrl.hostname !== "blob.vercel-storage.com" && !parsedBlobUrl.hostname.endsWith(".public.blob.vercel-storage.com")) {
-        return NextResponse.json({ error: "Invalid blobUrl" }, { status: 400 });
+      if (parsedStorageUrl.hostname !== r2PublicUrl.hostname) {
+        return NextResponse.json({ error: "Invalid storageUrl" }, { status: 400 });
       }
 
       const title = typeof body.title === "string" && body.title.trim() ? body.title.trim() : "Vídeo";
@@ -118,12 +141,17 @@ async function handleCreateVideo(req: Request, userId: string) {
         typeof body.estimatedDurationSeconds === "number" && body.estimatedDurationSeconds > 0
           ? body.estimatedDurationSeconds
           : undefined;
+      const mimeType = typeof body.mimeType === "string" ? body.mimeType : undefined;
+      const fileSizeBytes = typeof body.fileSizeBytes === "number" ? body.fileSizeBytes : undefined;
 
       const video = await createVideoAndStartJob(userId, {
         title,
         sourceType: "UPLOAD",
-        storageKey: blobUrl,
+        storageKey: storageUrl,
+        mimeType,
+        fileSizeBytes,
         estimatedDurationSeconds,
+        folderId,
       });
 
       return NextResponse.json(video, { status: 201 });
@@ -150,6 +178,7 @@ async function handleCreateVideo(req: Request, userId: string) {
       title,
       sourceType: "URL",
       sourceUrl,
+      folderId,
     });
 
     return NextResponse.json(video, { status: 201 });
@@ -167,7 +196,7 @@ async function handleCreateVideo(req: Request, userId: string) {
   }
 
   const title = typeof titleField === "string" && titleField.trim() ? titleField.trim() : file.name;
-  const key = `videos/${userId}/${Date.now()}-${file.name}`;
+  const key = `videos/${userId}/${randomUUID()}/original-${file.name}`;
 
   const url = await uploadVideoBlob(key, file);
 
@@ -175,6 +204,8 @@ async function handleCreateVideo(req: Request, userId: string) {
     title,
     sourceType: "UPLOAD",
     storageKey: url,
+    mimeType: file.type || undefined,
+    fileSizeBytes: file.size,
   });
 
   return NextResponse.json(video, { status: 201 });

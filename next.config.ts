@@ -1,13 +1,16 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
+const r2PublicUrl = process.env.R2_PUBLIC_URL ?? "";
+
 const csp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  // 'unsafe-eval' only in dev — React dev mode uses eval() for stack traces; never in production.
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV !== "production" ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https://*.public.blob.vercel-storage.com https://blob.vercel-storage.com",
-  "media-src 'self' https://*.public.blob.vercel-storage.com https://blob.vercel-storage.com",
-  "connect-src 'self' https://*.public.blob.vercel-storage.com https://blob.vercel-storage.com",
+  `img-src 'self' data: ${r2PublicUrl}`,
+  `media-src 'self' ${r2PublicUrl}`,
+  `connect-src 'self' ${r2PublicUrl}`,
   "font-src 'self'",
   "frame-ancestors 'none'",
   "base-uri 'self'",

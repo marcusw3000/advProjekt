@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AlertTriangle, ArrowLeft, LayoutGrid, LifeBuoy, LineChart, Users } from "lucide-react";
+import { AlertTriangle, ArrowLeft, LayoutGrid, LifeBuoy, LineChart, Users, Wallet } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Visão Geral", icon: LayoutGrid },
   { href: "/admin/usuarios", label: "Usuários", icon: Users },
+  { href: "/admin/financeiro", label: "Financeiro", icon: Wallet },
   { href: "/admin/jobs", label: "Jobs", icon: AlertTriangle },
   { href: "/admin/observabilidade", label: "Observabilidade", icon: LineChart },
   { href: "/admin/suporte", label: "Suporte", icon: LifeBuoy },

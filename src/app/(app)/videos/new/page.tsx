@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { upload } from "@vercel/blob/client";
 import { ArrowLeft, Link2, Loader2, Timer, UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,6 +34,8 @@ function readMediaDuration(file: File): Promise<number | null> {
   });
 }
 
+type FolderOption = { id: string; name: string };
+
 export default function NewVideoPage() {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("upload");
@@ -42,6 +43,8 @@ export default function NewVideoPage() {
   const [file, setFile] = useState<File | null>(null);
   const [durationSeconds, setDurationSeconds] = useState<number | null>(null);
   const [sourceUrl, setSourceUrl] = useState("");
+  const [folderId, setFolderId] = useState("");
+  const [folders, setFolders] = useState<FolderOption[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [minutesBalance, setMinutesBalance] = useState<number | null>(null);
@@ -51,6 +54,9 @@ export default function NewVideoPage() {
     fetch("/api/minutes")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => setMinutesBalance(data?.minutesBalance ?? 0));
+    fetch("/api/folders")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => setFolders(Array.isArray(data) ? data : []));
   }, []);
 
   const estimatedMinutes = durationSeconds ? Math.max(1, Math.ceil(durationSeconds / 60)) : null;
@@ -98,18 +104,38 @@ export default function NewVideoPage() {
       setLoading(true);
 
       try {
-        const blob = await upload(`videos/${Date.now()}-${file.name}`, file, {
-          access: "public",
-          handleUploadUrl: "/api/videos/upload",
+        const uploadReqRes = await fetch("/api/videos/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileName: file.name,
+            contentType: file.type || "application/octet-stream",
+            fileSize: file.size,
+          }),
         });
+        if (!uploadReqRes.ok) {
+          const data = await uploadReqRes.json().catch(() => ({}));
+          throw new Error(data.error ?? "Falha ao preparar envio");
+        }
+        const { uploadUrl, publicUrl, contentType, fileSize } = await uploadReqRes.json();
+
+        const putRes = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: { "Content-Type": file.type || "application/octet-stream" },
+          body: file,
+        });
+        if (!putRes.ok) throw new Error("Falha ao enviar arquivo");
 
         res = await fetch("/api/videos", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            blobUrl: blob.url,
+            storageUrl: publicUrl,
+            mimeType: contentType,
+            fileSizeBytes: fileSize,
             title: title.trim() || undefined,
             estimatedDurationSeconds: durationSeconds ?? undefined,
+            folderId: folderId || undefined,
           }),
         });
       } catch {
@@ -127,7 +153,11 @@ export default function NewVideoPage() {
       res = await fetch("/api/videos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceUrl: sourceUrl.trim(), title: title.trim() || undefined }),
+        body: JSON.stringify({
+          sourceUrl: sourceUrl.trim(),
+          title: title.trim() || undefined,
+          folderId: folderId || undefined,
+        }),
       });
     }
 
@@ -192,6 +222,25 @@ export default function NewVideoPage() {
                 onChange={(e) => setTitle(e.target.value)}
               />
             </div>
+
+            {folders.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="folder">Pasta (opcional)</Label>
+                <select
+                  id="folder"
+                  value={folderId}
+                  onChange={(e) => setFolderId(e.target.value)}
+                  className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+                >
+                  <option value="">Sem pasta</option>
+                  {folders.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {mode === "upload" ? (
               <div className="flex flex-col gap-1.5">
