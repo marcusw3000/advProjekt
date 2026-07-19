@@ -15,15 +15,28 @@ export async function debitMinutesForCompletedVideo(
   durationSeconds: number
 ) {
   const minutes = Math.max(1, Math.ceil(durationSeconds / 60));
-  await tx.user.update({
-    where: { id: userId },
-    data: { minutesBalance: { decrement: minutes } },
-  });
+
+  // Single atomic UPDATE (with a same-statement CTE snapshot of the prior
+  // balance) so concurrent completions for the same user can't race a
+  // separate read-then-write and clobber each other's debit.
+  const [result] = await tx.$queryRaw<{ old_balance: number; new_balance: number }[]>`
+    WITH prev AS (
+      SELECT "minutesBalance" AS old_balance FROM "User" WHERE id = ${userId}
+    )
+    UPDATE "User"
+    SET "minutesBalance" = GREATEST("User"."minutesBalance" - ${minutes}, 0)
+    FROM prev
+    WHERE "User".id = ${userId}
+    RETURNING prev.old_balance, "User"."minutesBalance" AS new_balance
+  `;
+
+  const debited = result ? result.old_balance - result.new_balance : 0;
+
   await tx.minutesTransaction.create({
     data: {
       userId,
       videoId,
-      amount: -minutes,
+      amount: -debited,
       reason: "VIDEO_TRANSCRIPTION",
     },
   });

@@ -16,16 +16,20 @@ model User {
   passwordHash   String
   name           String?
   minutesBalance Int      @default(30)
+  isAdmin        Boolean  @default(false)
   createdAt      DateTime @default(now())
 
   videos              Video[]
   minutesTransactions MinutesTransaction[]
+  passwordResetTokens PasswordResetToken[]
+  supportTickets      SupportTicket[]
 }
 
 enum MinutesReason {
   SIGNUP_GRANT
   VIDEO_TRANSCRIPTION
   PURCHASE
+  ADMIN_ADJUSTMENT
 }
 
 model MinutesTransaction {
@@ -39,6 +43,31 @@ model MinutesTransaction {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model PasswordResetToken {
+  id         String    @id @default(cuid())
+  userId     String
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model CronRun {
+  id          String    @id @default(cuid())
+  startedAt   DateTime  @default(now())
+  finishedAt  DateTime?
+  reconciled  Int       @default(0)
+  processed   Int       @default(0)
+  timedOut    Int       @default(0)
+  error       String?
+
+  @@index([startedAt])
 }
 
 enum VideoSourceType {
@@ -83,11 +112,31 @@ model TranscriptionJob {
   asrProvider  String    @default("assemblyai")
   asrJobId     String?
   errorMessage String?
+  attemptCount Int       @default(0)
+  nextRetryAt  DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   completedAt  DateTime?
 
   video Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+}
+
+enum SupportTicketStatus {
+  OPEN
+  CLOSED
+}
+
+model SupportTicket {
+  id        String              @id @default(cuid())
+  userId    String
+  subject   String
+  message   String              @db.Text
+  status    SupportTicketStatus @default(OPEN)
+  createdAt DateTime            @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model TranscriptSegment {

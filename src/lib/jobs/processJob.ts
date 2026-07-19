@@ -1,11 +1,15 @@
+import * as Sentry from "@sentry/nextjs";
 import { db } from "@/lib/db";
 import { assemblyAiProvider } from "@/lib/asr/assemblyai";
 import { resolveAudioUrl } from "@/lib/jobs/resolveAudioUrl";
+import { handleJobFailure } from "@/lib/jobs/handleJobFailure";
+import { signWebhookToken } from "@/lib/jobs/webhookToken";
 
 function webhookUrl(jobId: string) {
   const base = process.env.APP_URL;
   if (!base) throw new Error("APP_URL is not set");
-  return `${base}/api/webhooks/assemblyai?jobId=${jobId}`;
+  const token = signWebhookToken(jobId);
+  return `${base}/api/webhooks/assemblyai?jobId=${jobId}&token=${token}`;
 }
 
 export async function processTranscriptionJob(jobId: string) {
@@ -41,11 +45,8 @@ export async function processTranscriptionJob(jobId: string) {
       data: { asrJobId },
     });
   } catch (err) {
+    Sentry.captureException(err, { tags: { jobId } });
     const errorMessage = err instanceof Error ? err.message : "Unknown error";
-    await db.transcriptionJob.update({
-      where: { id: jobId },
-      data: { status: "FAILED", errorMessage },
-    });
-    await db.video.update({ where: { id: job.videoId }, data: { status: "FAILED" } });
+    await handleJobFailure({ jobId, videoId: job.videoId, attemptCount: job.attemptCount, errorMessage });
   }
 }

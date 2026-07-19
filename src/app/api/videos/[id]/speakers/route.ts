@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+
+const updateSpeakerSchema = z.object({
+  originalSpeakerLabel: z.string().min(1).max(200),
+  newLabel: z.string().trim().min(1).max(200),
+});
 
 export async function PATCH(
   req: Request,
@@ -18,16 +24,14 @@ export async function PATCH(
   }
 
   const body = await req.json();
-  const originalSpeakerLabel = typeof body.originalSpeakerLabel === "string" ? body.originalSpeakerLabel : "";
-  const newLabel = typeof body.newLabel === "string" ? body.newLabel.trim() : "";
-
-  if (!originalSpeakerLabel || !newLabel) {
-    return NextResponse.json({ error: "Missing originalSpeakerLabel or newLabel" }, { status: 400 });
+  const parsed = updateSpeakerSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
 
   await db.transcriptSegment.updateMany({
-    where: { videoId: id, originalSpeakerLabel },
-    data: { speakerLabel: newLabel },
+    where: { videoId: id, originalSpeakerLabel: parsed.data.originalSpeakerLabel },
+    data: { speakerLabel: parsed.data.newLabel },
   });
 
   return NextResponse.json({ ok: true });

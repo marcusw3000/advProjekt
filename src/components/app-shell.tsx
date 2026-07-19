@@ -11,6 +11,7 @@ import {
   Plus,
   Settings,
   Share2,
+  ShieldCheck,
   Timer,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
@@ -38,11 +39,13 @@ function isActive(pathname: string, href: string) {
 export function AppShell({
   userEmail,
   minutesBalance,
+  isAdmin,
   onSignOut,
   children,
 }: {
   userEmail: string;
   minutesBalance: number;
+  isAdmin?: boolean;
   onSignOut: () => void | Promise<void>;
   children: React.ReactNode;
 }) {
@@ -148,6 +151,15 @@ export function AppShell({
             <Settings className="size-[18px]" />
             Configurações
           </Link>
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+            >
+              <ShieldCheck className="size-[18px]" />
+              Admin
+            </Link>
+          )}
           <button
             type="button"
             onClick={onSignOut}

@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+
+const updateSegmentSchema = z.object({
+  text: z.string().max(10000),
+});
 
 export async function PATCH(
   req: Request,
@@ -22,15 +27,14 @@ export async function PATCH(
   }
 
   const body = await req.json();
-  const text = typeof body.text === "string" ? body.text : undefined;
-
-  if (text === undefined) {
-    return NextResponse.json({ error: "Missing text" }, { status: 400 });
+  const parsed = updateSegmentSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid input" }, { status: 400 });
   }
 
   const updated = await db.transcriptSegment.update({
-    where: { id },
-    data: { text },
+    where: { id, videoId: segment.videoId },
+    data: { text: parsed.data.text },
   });
 
   return NextResponse.json(updated);

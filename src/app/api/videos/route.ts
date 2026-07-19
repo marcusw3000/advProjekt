@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { uploadVideoBlob } from "@/lib/storage";
 import { processTranscriptionJob } from "@/lib/jobs/processJob";
-import { getMinutesBalance } from "@/lib/minutes";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 class InsufficientCreditsError extends Error {}
 
@@ -35,30 +35,39 @@ async function createVideoAndStartJob(
     estimatedDurationSeconds?: number;
   }
 ) {
-  const minutesBalance = await getMinutesBalance(userId);
   const estimatedMinutes = data.estimatedDurationSeconds
     ? Math.max(1, Math.ceil(data.estimatedDurationSeconds / 60))
     : null;
 
-  if (estimatedMinutes ? minutesBalance < estimatedMinutes : minutesBalance <= 0) {
-    throw new InsufficientCreditsError();
-  }
+  // Serializable isolation prevents two concurrent requests from both reading
+  // a stale balance and both passing the check before either video is created.
+  const video = await db.$transaction(
+    async (tx) => {
+      const user = await tx.user.findUnique({ where: { id: userId }, select: { minutesBalance: true } });
+      const minutesBalance = user?.minutesBalance ?? 0;
 
-  const video = await db.video.create({
-    data: {
-      userId,
-      title: data.title,
-      sourceType: data.sourceType,
-      storageKey: data.storageKey,
-      sourceUrl: data.sourceUrl,
-      durationSeconds: data.estimatedDurationSeconds
-        ? Math.round(data.estimatedDurationSeconds)
-        : null,
-      status: "PENDING",
-      job: { create: {} },
+      if (estimatedMinutes ? minutesBalance < estimatedMinutes : minutesBalance <= 0) {
+        throw new InsufficientCreditsError();
+      }
+
+      return tx.video.create({
+        data: {
+          userId,
+          title: data.title,
+          sourceType: data.sourceType,
+          storageKey: data.storageKey,
+          sourceUrl: data.sourceUrl,
+          durationSeconds: data.estimatedDurationSeconds
+            ? Math.round(data.estimatedDurationSeconds)
+            : null,
+          status: "PENDING",
+          job: { create: {} },
+        },
+        include: { job: true },
+      });
     },
-    include: { job: true },
-  });
+    { isolationLevel: "Serializable" }
+  );
 
   if (video.job) void processTranscriptionJob(video.job.id).catch(() => {});
 
@@ -69,6 +78,11 @@ export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const allowed = await checkRateLimit(`video-create:${session.user.id}`, 10, 3600);
+  if (!allowed) {
+    return NextResponse.json({ error: "Muitas tentativas, tente novamente em instantes" }, { status: 429 });
   }
 
   try {

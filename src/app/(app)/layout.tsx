@@ -19,7 +19,12 @@ export default async function AppLayout({
   }
 
   return (
-    <AppShell userEmail={session.user.email ?? ""} minutesBalance={minutesBalance} onSignOut={handleSignOut}>
+    <AppShell
+      userEmail={session.user.email ?? ""}
+      minutesBalance={minutesBalance}
+      isAdmin={session.user.isAdmin}
+      onSignOut={handleSignOut}
+    >
       {children}
     </AppShell>
   );

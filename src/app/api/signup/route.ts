@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { MINUTES_SIGNUP_GRANT } from "@/lib/minutesConfig";
+import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 
 const signupSchema = z.object({
   email: z.string().email(),
@@ -11,6 +12,11 @@ const signupSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  const ipAllowed = await checkRateLimit(`signup:${getClientIp(req)}`, 10, 3600);
+  if (!ipAllowed) {
+    return NextResponse.json({ error: "Muitas tentativas, tente novamente em instantes" }, { status: 429 });
+  }
+
   const body = await req.json();
   const parsed = signupSchema.safeParse(body);
   if (!parsed.success) {
@@ -18,6 +24,11 @@ export async function POST(req: Request) {
   }
 
   const { email, password, name } = parsed.data;
+
+  const emailAllowed = await checkRateLimit(`signup:${email}`, 3, 3600);
+  if (!emailAllowed) {
+    return NextResponse.json({ error: "Muitas tentativas, tente novamente em instantes" }, { status: 429 });
+  }
 
   const existing = await db.user.findUnique({ where: { email } });
   if (existing) {

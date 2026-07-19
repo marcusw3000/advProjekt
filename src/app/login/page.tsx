@@ -64,6 +64,14 @@ export default function LoginPage() {
           />
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
+        <div className="flex justify-end">
+          <Link
+            href="/esqueci-senha"
+            className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+          >
+            Esqueci minha senha
+          </Link>
+        </div>
         <Button
           type="submit"
           disabled={loading}
