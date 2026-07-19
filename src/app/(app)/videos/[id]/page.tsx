@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { VideoDetailClient } from "@/components/VideoDetailClient";
 import { VideoTitleEditor } from "@/components/VideoTitleEditor";
 import { FolderAssignSelect } from "@/components/FolderAssignSelect";
+import { DeleteVideoButton } from "@/components/DeleteVideoButton";
 
 export default async function VideoDetailPage({
   params,
@@ -44,7 +45,10 @@ export default async function VideoDetailPage({
           className="font-heading text-2xl text-foreground"
           inputClassName="font-heading text-2xl"
         />
-        <FolderAssignSelect videoId={video.id} folders={folders} currentFolderId={video.folderId} />
+        <div className="flex items-center gap-2">
+          <FolderAssignSelect videoId={video.id} folders={folders} currentFolderId={video.folderId} />
+          <DeleteVideoButton videoId={video.id} videoTitle={video.title} />
+        </div>
       </div>
       <VideoDetailClient
         videoId={video.id}

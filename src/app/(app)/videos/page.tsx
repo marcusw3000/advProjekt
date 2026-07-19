@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { JobStatusBadge } from "@/components/JobStatusBadge";
 import { VideoTitleEditor } from "@/components/VideoTitleEditor";
+import { DeleteVideoButton } from "@/components/DeleteVideoButton";
 
 function formatDuration(seconds: number | null) {
   if (!seconds) return "--:--";
@@ -154,6 +155,7 @@ export default async function VideosPage() {
                           <Download className="size-4" aria-hidden="true" />
                         </a>
                       )}
+                      <DeleteVideoButton videoId={video.id} videoTitle={video.title} compact />
                     </div>
                   </div>
                 </div>
