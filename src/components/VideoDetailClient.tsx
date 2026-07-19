@@ -101,7 +101,7 @@ export function VideoDetailClient({
   }
 
   useEffect(() => {
-    if (!ACTIVE_STATUSES.has(status)) return;
+    if (!ACTIVE_STATUSES.has(initialStatus)) return;
 
     let cancelled = false;
 
@@ -122,6 +122,10 @@ export function VideoDetailClient({
         setSegments(video.segments ?? []);
         router.refresh();
       }
+
+      if (!ACTIVE_STATUSES.has(data.status)) {
+        clearInterval(interval);
+      }
     }
 
     const interval = setInterval(poll, POLL_INTERVAL_MS);
@@ -129,7 +133,11 @@ export function VideoDetailClient({
       cancelled = true;
       clearInterval(interval);
     };
-  }, [status, videoId, router]);
+    // Runs once for the component's lifetime — depending on `status` here would re-trigger
+    // this effect (and its cleanup) every time poll() calls setStatus, cancelling the very
+    // completion fetch it just kicked off right as the status flips to COMPLETE.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoId, router]);
 
   const autosaveLabel = formatMinutesAgo(lastSavedAt, nowTick);
 
