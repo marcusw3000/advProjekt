@@ -4,9 +4,10 @@ import { withSentryConfig } from "@sentry/nextjs";
 const r2PublicUrl = process.env.R2_PUBLIC_URL ?? "";
 // Presigned uploads/downloads PUT/GET directly against the R2 S3 API endpoint from the
 // browser — a different origin than the public read domain (r2PublicUrl) — so connect-src
-// needs both.
+// needs both. The SDK addresses buckets virtual-hosted-style (bucket as subdomain), so the
+// wildcard is required, not just the bare account endpoint.
 const r2ApiOrigin = process.env.R2_ACCOUNT_ID
-  ? `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
+  ? `https://*.${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
   : "";
 
 const csp = [
