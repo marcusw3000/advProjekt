@@ -117,16 +117,16 @@ export function VideoDetailClient({
       setStatus(data.status);
       setErrorMessage(data.errorMessage ?? null);
 
+      if (!ACTIVE_STATUSES.has(data.status)) {
+        clearInterval(interval);
+      }
+
       if (data.status === "COMPLETE") {
         const videoRes = await fetch(`/api/videos/${videoId}`);
         if (!videoRes.ok || cancelled) return;
         const video = await videoRes.json();
         setSegments(video.segments ?? []);
         router.refresh();
-      }
-
-      if (!ACTIVE_STATUSES.has(data.status)) {
-        clearInterval(interval);
       }
     }
 

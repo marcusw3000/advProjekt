@@ -4,6 +4,11 @@ import { db } from "@/lib/db";
 import { deleteVideoAssets } from "@/lib/storage";
 import { getVideoAccess } from "@/lib/videoAccess";
 
+// fileSizeBytes is a Prisma BigInt — JSON.stringify (used by NextResponse.json) can't serialize it natively.
+function serializeVideo<T extends { fileSizeBytes: bigint | null }>(video: T) {
+  return { ...video, fileSizeBytes: video.fileSizeBytes?.toString() ?? null };
+}
+
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -21,7 +26,7 @@ export async function GET(
 
   const segments = await db.transcriptSegment.findMany({ where: { videoId: id }, orderBy: { order: "asc" } });
 
-  return NextResponse.json({ ...access.video, segments });
+  return NextResponse.json({ ...serializeVideo(access.video), segments });
 }
 
 export async function PATCH(
