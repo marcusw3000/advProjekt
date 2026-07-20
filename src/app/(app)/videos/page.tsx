@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Download, Eye, FileVideo, Link2, Plus, Timer, Upload } from "lucide-react";
+import { Download, Eye, FileVideo, Plus, Timer } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getMinutesBalance } from "@/lib/minutes";
@@ -114,16 +114,10 @@ export default async function VideosPage() {
                   className="flex flex-col gap-3 border-b border-border px-4 py-3 last:border-0 hover:bg-secondary/40 md:grid md:grid-cols-[minmax(0,1fr)_112px_88px_110px_84px] md:items-center md:gap-4"
                 >
                   <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary">
-                      {video.sourceType === "URL" ? (
-                        <Link2 className="size-4 text-muted-foreground" aria-hidden="true" />
-                      ) : (
-                        <Upload className="size-4 text-muted-foreground" aria-hidden="true" />
-                      )}
-                    </div>
                     <VideoTitleEditor
                       videoId={video.id}
                       initialTitle={video.title}
+                      href={`/videos/${video.id}`}
                       className="text-sm font-medium text-foreground"
                       inputClassName="text-sm"
                     />

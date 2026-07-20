@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Loader2, Pencil, X } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,11 +11,13 @@ export function VideoTitleEditor({
   initialTitle,
   className,
   inputClassName,
+  href,
 }: {
   videoId: string;
   initialTitle: string;
   className?: string;
   inputClassName?: string;
+  href?: string;
 }) {
   const [title, setTitle] = useState(initialTitle);
   const [editing, setEditing] = useState(false);
@@ -110,7 +113,13 @@ export function VideoTitleEditor({
 
   return (
     <div className={cn("group/title flex min-w-0 items-center gap-1.5", className)}>
-      <span className="truncate">{title}</span>
+      {href ? (
+        <Link href={href} className="truncate hover:underline">
+          {title}
+        </Link>
+      ) : (
+        <span className="truncate">{title}</span>
+      )}
       <button
         type="button"
         onClick={startEditing}
