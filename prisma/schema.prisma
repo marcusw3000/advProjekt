@@ -24,6 +24,8 @@ model User {
   minutesTransactions MinutesTransaction[]
   passwordResetTokens PasswordResetToken[]
   supportTickets      SupportTicket[]
+  sharesGiven         VideoShare[]         @relation("SharedByUser")
+  sharesReceived      VideoShare[]         @relation("SharedWithUser")
 }
 
 enum MinutesReason {
@@ -113,9 +115,26 @@ model Video {
   folder   Folder?            @relation(fields: [folderId], references: [id], onDelete: SetNull)
   job      TranscriptionJob?
   segments TranscriptSegment[]
+  shares   VideoShare[]
 
   @@index([userId])
   @@index([folderId])
+}
+
+model VideoShare {
+  id               String   @id @default(cuid())
+  videoId          String
+  sharedByUserId   String
+  sharedWithUserId String
+  createdAt        DateTime @default(now())
+
+  video      Video @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  sharedBy   User  @relation("SharedByUser", fields: [sharedByUserId], references: [id], onDelete: Cascade)
+  sharedWith User  @relation("SharedWithUser", fields: [sharedWithUserId], references: [id], onDelete: Cascade)
+
+  @@unique([videoId, sharedWithUserId])
+  @@index([sharedWithUserId])
+  @@index([videoId])
 }
 
 model Folder {

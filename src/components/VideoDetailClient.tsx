@@ -32,6 +32,7 @@ export function VideoDetailClient({
   videoSrc,
   initialSummary,
   initialSummaryStatus,
+  canRetry = true,
 }: {
   videoId: string;
   initialStatus: string;
@@ -39,6 +40,7 @@ export function VideoDetailClient({
   videoSrc?: string | null;
   initialSummary?: string | null;
   initialSummaryStatus?: string | null;
+  canRetry?: boolean;
 }) {
   const [status, setStatus] = useState(initialStatus);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -201,7 +203,7 @@ export function VideoDetailClient({
     <div className="flex flex-wrap items-center gap-2">
       <JobStatusBadge status={status} />
       {errorMessage && <span className="text-sm text-destructive">{errorMessage}</span>}
-      {status === "FAILED" && (
+      {status === "FAILED" && canRetry && (
         <Button type="button" variant="outline" size="sm" onClick={handleRetry} disabled={retrying}>
           {retrying ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCcw className="size-3.5" />}
           {retrying ? "Reenviando..." : "Tentar novamente"}

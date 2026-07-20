@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getVideoAccess } from "@/lib/videoAccess";
 
 const updateSegmentSchema = z.object({
   text: z.string().max(10000),
@@ -17,12 +18,13 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const segment = await db.transcriptSegment.findUnique({
-    where: { id },
-    include: { video: true },
-  });
+  const segment = await db.transcriptSegment.findUnique({ where: { id } });
+  if (!segment) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
-  if (!segment || segment.video.userId !== session.user.id) {
+  const access = await getVideoAccess(segment.videoId, session.user.id);
+  if (!access) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 

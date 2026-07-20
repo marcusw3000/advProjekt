@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getVideoAccess } from "@/lib/videoAccess";
 import { toTxt } from "@/lib/export/txt";
 import { toDocx } from "@/lib/export/docx";
 import { toPdf } from "@/lib/export/pdf";
@@ -29,14 +30,15 @@ export async function GET(
     return NextResponse.json({ error: "Invalid format" }, { status: 400 });
   }
 
-  const video = await db.video.findUnique({
-    where: { id },
-    include: { segments: { orderBy: { order: "asc" } } },
-  });
-
-  if (!video || video.userId !== session.user.id) {
+  const access = await getVideoAccess(id, session.user.id);
+  if (!access) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+
+  const video = {
+    ...access.video,
+    segments: await db.transcriptSegment.findMany({ where: { videoId: id }, orderBy: { order: "asc" } }),
+  };
 
   const body =
     format === "docx"

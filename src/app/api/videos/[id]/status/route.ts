@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getVideoAccess } from "@/lib/videoAccess";
 
 export async function GET(
   _req: Request,
@@ -12,17 +13,15 @@ export async function GET(
   }
 
   const { id } = await params;
-  const video = await db.video.findUnique({
-    where: { id },
-    include: { job: true },
-  });
-
-  if (!video || video.userId !== session.user.id) {
+  const access = await getVideoAccess(id, session.user.id);
+  if (!access) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  const job = await db.transcriptionJob.findUnique({ where: { videoId: id } });
+
   return NextResponse.json({
-    status: video.status,
-    errorMessage: video.job?.errorMessage ?? null,
+    status: access.video.status,
+    errorMessage: job?.errorMessage ?? null,
   });
 }

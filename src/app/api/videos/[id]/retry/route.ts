@@ -24,6 +24,7 @@ export async function POST(
   if (!video || video.userId !== session.user.id || !video.job) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+  // Retry re-runs the transcription job on the owner's minutes balance — owner only.
 
   if (video.job.status !== "FAILED") {
     return NextResponse.json({ error: "Job is not in a FAILED state" }, { status: 409 });

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getVideoAccess } from "@/lib/videoAccess";
 import { generateHearingSummary } from "@/lib/summary";
 import { checkRateLimit } from "@/lib/rateLimit";
 
@@ -22,14 +23,15 @@ export async function POST(
   }
 
   const { id } = await params;
-  const video = await db.video.findUnique({
-    where: { id },
-    include: { segments: { orderBy: { order: "asc" } } },
-  });
-
-  if (!video || video.userId !== session.user.id) {
+  const access = await getVideoAccess(id, session.user.id);
+  if (!access) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+
+  const video = {
+    ...access.video,
+    segments: await db.transcriptSegment.findMany({ where: { videoId: id }, orderBy: { order: "asc" } }),
+  };
 
   if (video.status !== "COMPLETE" || video.segments.length === 0) {
     return NextResponse.json(
@@ -53,7 +55,7 @@ export async function POST(
   try {
     const summary = await generateHearingSummary(video.segments);
     const updated = await db.video.update({
-      where: { id, userId: session.user.id },
+      where: { id },
       data: {
         summary,
         summaryStatus: "COMPLETE",
@@ -71,7 +73,7 @@ export async function POST(
     Sentry.captureException(err, { tags: { videoId: id } });
     const message = "Falha ao gerar resumo";
     await db.video.update({
-      where: { id, userId: session.user.id },
+      where: { id },
       data: { summaryStatus: "FAILED", summaryError: message },
     });
     return NextResponse.json({ error: message }, { status: 500 });

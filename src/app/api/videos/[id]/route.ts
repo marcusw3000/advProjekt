@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { deleteVideoAssets } from "@/lib/storage";
+import { getVideoAccess } from "@/lib/videoAccess";
 
 export async function GET(
   _req: Request,
@@ -13,16 +14,14 @@ export async function GET(
   }
 
   const { id } = await params;
-  const video = await db.video.findUnique({
-    where: { id },
-    include: { segments: { orderBy: { order: "asc" } } },
-  });
-
-  if (!video || video.userId !== session.user.id) {
+  const access = await getVideoAccess(id, session.user.id);
+  if (!access) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  return NextResponse.json(video);
+  const segments = await db.transcriptSegment.findMany({ where: { videoId: id }, orderBy: { order: "asc" } });
+
+  return NextResponse.json({ ...access.video, segments });
 }
 
 export async function PATCH(
@@ -35,8 +34,8 @@ export async function PATCH(
   }
 
   const { id } = await params;
-  const existing = await db.video.findUnique({ where: { id } });
-  if (!existing || existing.userId !== session.user.id) {
+  const access = await getVideoAccess(id, session.user.id);
+  if (!access) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
@@ -52,6 +51,10 @@ export async function PATCH(
   }
 
   if (body.folderId !== undefined) {
+    // Moving between folders reorganizes the owner's own folder tree — owner only.
+    if (access.role !== "owner") {
+      return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
+    }
     if (body.folderId === null) {
       data.folderId = null;
     } else if (typeof body.folderId === "string") {
@@ -70,7 +73,7 @@ export async function PATCH(
   }
 
   const video = await db.video.update({
-    where: { id, userId: session.user.id },
+    where: { id },
     data,
   });
 
