@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { assemblyAiProvider } from "@/lib/asr/assemblyai";
 import { guessSpeakerNames } from "@/lib/jobs/guessSpeakerNames";
 import { guessAddressedSpeakerNames } from "@/lib/jobs/guessAddressedSpeakerNames";
+import { guessSpeakerRoles } from "@/lib/jobs/guessSpeakerRoles";
 import { debitMinutesForCompletedVideo } from "@/lib/minutes";
 import { handleJobFailure } from "@/lib/jobs/handleJobFailure";
 
@@ -30,6 +31,16 @@ export async function finalizeJobFromAsr(jobId: string) {
       ...guessAddressedSpeakerNames(transcript.utterances),
       ...guessSpeakerNames(transcript.utterances),
     };
+    const speakerRoles = guessSpeakerRoles(transcript.utterances);
+
+    const labelFor = (speaker: string): string => {
+      const name = speakerNames[speaker];
+      const role = speakerRoles[speaker];
+      if (name && role) return `${name} (${role})`;
+      if (role) return role;
+      if (name) return name;
+      return speaker;
+    };
 
     const maxEndMs = transcript.utterances.reduce((max, u) => Math.max(max, u.endMs), 0);
     const durationSeconds = transcript.durationSeconds ?? Math.ceil(maxEndMs / 1000);
@@ -39,7 +50,7 @@ export async function finalizeJobFromAsr(jobId: string) {
       await tx.transcriptSegment.createMany({
         data: transcript.utterances.map((u, index) => ({
           videoId: job.videoId,
-          speakerLabel: speakerNames[u.speaker] ?? u.speaker,
+          speakerLabel: labelFor(u.speaker),
           originalSpeakerLabel: u.speaker,
           startMs: u.startMs,
           endMs: u.endMs,
