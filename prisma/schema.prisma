@@ -191,6 +191,7 @@ model TranscriptSegment {
   startMs              Int
   endMs                Int
   text                 String
+  notes                String?
   order                Int
   createdAt            DateTime @default(now())
 

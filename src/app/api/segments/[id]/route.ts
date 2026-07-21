@@ -5,7 +5,8 @@ import { db } from "@/lib/db";
 import { getVideoAccess } from "@/lib/videoAccess";
 
 const updateSegmentSchema = z.object({
-  text: z.string().max(10000),
+  text: z.string().max(10000).optional(),
+  notes: z.string().max(2000).nullable().optional(),
 });
 
 export async function PATCH(
@@ -36,7 +37,7 @@ export async function PATCH(
 
   const updated = await db.transcriptSegment.update({
     where: { id, videoId: segment.videoId },
-    data: { text: parsed.data.text },
+    data: parsed.data,
   });
 
   return NextResponse.json(updated);

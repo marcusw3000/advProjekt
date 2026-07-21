@@ -1,13 +1,19 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Pencil, Search, X } from "lucide-react";
+import { Pencil, Search, StickyNote, X } from "lucide-react";
 import { formatMs } from "@/lib/time";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -34,6 +40,7 @@ export type TranscriptSegmentData = {
   startMs: number;
   endMs: number;
   text: string;
+  notes: string | null;
 };
 
 const SPEAKER_COLORS = [
@@ -65,6 +72,7 @@ export function TranscriptViewer({
   const [editingFilterSpeaker, setEditingFilterSpeaker] = useState<string | null>(null);
   const [editingSegmentSpeakerId, setEditingSegmentSpeakerId] = useState<string | null>(null);
   const [editingSegmentId, setEditingSegmentId] = useState<string | null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [renameMode, setRenameMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -78,6 +86,8 @@ export function TranscriptViewer({
       speakerLabel,
     }));
   }, [segments]);
+
+  const notedSegments = useMemo(() => segments.filter((s) => s.notes?.trim()), [segments]);
 
   const speakerColorMap = useMemo(() => {
     const map = new Map<string, (typeof SPEAKER_COLORS)[number]>();
@@ -133,6 +143,20 @@ export function TranscriptViewer({
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text }),
+    });
+    onSaved?.();
+  }
+
+  async function saveNote(segmentId: string, notes: string) {
+    const trimmed = notes.trim();
+    const value = trimmed || null;
+    onSegmentsChange(segments.map((s) => (s.id === segmentId ? { ...s, notes: value } : s)));
+    setEditingNoteId(null);
+
+    await fetch(`/api/segments/${segmentId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notes: value }),
     });
     onSaved?.();
   }
@@ -220,16 +244,43 @@ export function TranscriptViewer({
             </button>
           );
         })}
-        <Button
-          type="button"
-          variant={renameMode ? "secondary" : "outline"}
-          size="xs"
-          onClick={() => setRenameMode((v) => !v)}
-          className="ml-auto"
-        >
-          <Pencil className="size-3.5" />
-          {renameMode ? "Concluir" : "Editar nomes"}
-        </Button>
+        <div className="ml-auto flex items-center gap-1.5">
+          {notedSegments.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button type="button" variant="outline" size="xs">
+                    <StickyNote className="size-3.5" />
+                    Notas ({notedSegments.length})
+                  </Button>
+                }
+              />
+              <DropdownMenuContent align="end" className="max-w-80">
+                {notedSegments.map((s) => (
+                  <DropdownMenuItem
+                    key={s.id}
+                    onClick={() => onSeek?.(s.startMs)}
+                    className="flex-col items-start gap-0.5"
+                  >
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {formatMs(s.startMs)} · {s.speakerLabel}
+                    </span>
+                    <span className="line-clamp-2 text-xs">{s.notes}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          <Button
+            type="button"
+            variant={renameMode ? "secondary" : "outline"}
+            size="xs"
+            onClick={() => setRenameMode((v) => !v)}
+          >
+            <Pencil className="size-3.5" />
+            {renameMode ? "Concluir" : "Editar nomes"}
+          </Button>
+        </div>
       </div>
       {renameMode && (
         <p className="text-xs text-muted-foreground">Clique em um locutor acima pra renomear.</p>
@@ -305,6 +356,44 @@ export function TranscriptViewer({
               >
                 {highlightMatch(segment.text, normalizedSearch)}
               </p>
+            )}
+
+            {editingNoteId === segment.id ? (
+              <Textarea
+                autoFocus
+                defaultValue={segment.notes ?? ""}
+                placeholder="Adicionar nota..."
+                onBlur={(e) => saveNote(segment.id, e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") setEditingNoteId(null);
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="mt-1.5"
+              />
+            ) : segment.notes ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingNoteId(segment.id);
+                }}
+                className="mt-1.5 flex items-start gap-1.5 rounded-md bg-accent/40 px-2 py-1 text-left text-xs italic text-muted-foreground hover:bg-accent/60"
+              >
+                <StickyNote className="mt-0.5 size-3 shrink-0" />
+                <span>{segment.notes}</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingNoteId(segment.id);
+                }}
+                className="mt-1.5 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              >
+                <StickyNote className="size-3" />
+                Nota
+              </button>
             )}
           </div>
         </Card>
