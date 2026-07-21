@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Pencil, Search, StickyNote, X } from "lucide-react";
 import { formatMs } from "@/lib/time";
 import { Badge } from "@/components/ui/badge";
@@ -75,6 +75,9 @@ export function TranscriptViewer({
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [renameMode, setRenameMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [jumpedSegmentId, setJumpedSegmentId] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const jumpTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const speakers = useMemo(() => {
     const seen = new Map<string, string>();
@@ -161,12 +164,29 @@ export function TranscriptViewer({
     onSaved?.();
   }
 
+  function goToSegment(segment: TranscriptSegmentData) {
+    onSeek?.(segment.startMs);
+    setSearchTerm("");
+    setSelectedSpeakers(null);
+
+    requestAnimationFrame(() => {
+      const el = containerRef.current?.querySelector<HTMLElement>(
+        `[data-segment-id="${segment.id}"]`
+      );
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+
+    if (jumpTimeoutRef.current) clearTimeout(jumpTimeoutRef.current);
+    setJumpedSegmentId(segment.id);
+    jumpTimeoutRef.current = setTimeout(() => setJumpedSegmentId(null), 2000);
+  }
+
   if (segments.length === 0) {
     return <p className="text-sm text-muted-foreground">Nenhum segmento de transcrição ainda.</p>;
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div ref={containerRef} className="flex flex-col gap-3">
       <div className="relative">
         <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -259,7 +279,7 @@ export function TranscriptViewer({
                 {notedSegments.map((s) => (
                   <DropdownMenuItem
                     key={s.id}
-                    onClick={() => onSeek?.(s.startMs)}
+                    onClick={() => goToSegment(s)}
                     className="flex-col items-start gap-0.5"
                   >
                     <span className="font-mono text-xs text-muted-foreground">
@@ -295,11 +315,14 @@ export function TranscriptViewer({
         return (
         <Card
           key={segment.id}
+          data-segment-id={segment.id}
           onClick={() => onSeek?.(segment.startMs)}
           style={{ borderLeft: `3px solid ${color.bg}` }}
-          className={`flex-row gap-3 px-3 py-2.5 ring-border/60 ${
+          className={`flex-row gap-3 px-3 py-2.5 ring-border/60 transition-colors ${
             onSeek ? "cursor-pointer" : ""
-          } ${activeSegmentId === segment.id ? "bg-accent/60 ring-primary/40" : ""}`}
+          } ${activeSegmentId === segment.id ? "bg-accent/60 ring-primary/40" : ""} ${
+            jumpedSegmentId === segment.id ? "ring-2 ring-primary" : ""
+          }`}
         >
           <span className="w-24 shrink-0 pt-0.5 font-mono text-xs text-muted-foreground">
             {formatMs(segment.startMs)}–{formatMs(segment.endMs)}
